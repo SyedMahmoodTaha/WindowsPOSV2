@@ -1,0 +1,10 @@
+node_modules/
+release/
+dist/
+*.exe
+*.dmg
+*.zip
+.DS_Store
+.env
+*.sqlite
+*.db

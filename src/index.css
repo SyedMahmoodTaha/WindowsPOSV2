@@ -1,0 +1,140 @@
+/* @import url('https://fonts.googleapis.com/css2?family=Betania+Patmos&display=swap'); */
+/* @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap'); */
+/* @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap'); */
+/* @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap'); */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .field {
+    @apply rounded-[10px] border border-[#444] bg-[#1f1f1f] px-3 py-2 text-sm text-[#f5f5f5] outline-none placeholder:text-[#777] focus:border-[#d3d3d3];
+  }
+}
+
+html, body, #root {
+  margin: 0;
+  min-height: 100%;
+  width: 100%;
+  background: #1f1f1f;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body{
+  font-family: "Montserrat", "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (max-width: 640px) {
+  body {
+    font-size: 14px;
+  }
+
+  .quick-action-card {
+    padding: 0.9rem 1rem;
+  }
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.quantity-input {
+  -moz-appearance: textfield;
+}
+
+.quantity-input::-webkit-inner-spin-button,
+.quantity-input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+body {
+  background: #1f1f1f;
+  color: #f5f5f5;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+body.theme-light {
+  background: #f4f1eb;
+  color: #242321;
+}
+
+body.theme-light [class~="bg-[#1a1a1a]"] { background-color: #fffdf9; }
+body.theme-light [class~="bg-[#1f1f1f]"] { background-color: #f4f1eb; }
+body.theme-light [class~="bg-[#2a2a2a]"] { background-color: #fffdf9; }
+body.theme-light [class~="bg-[#242424]"] { background-color: #fffdf9 !important; }
+body.theme-light [class~="bg-[#333333]"] { background-color: #f5f1e9; }
+body.theme-light [class~="bg-[#3a3a3a]"] { background-color: #f5f1e9 !important; }
+body.theme-light [class~="bg-[#2f2f2f]"] { background-color: #f6f2ea !important; }
+body.theme-light [class~="border-[#553838]"] { border-color: #d3cabc !important; }
+body.theme-light [class~="border-[#555]"] { border-color: #c9c0b3 !important; }
+body.theme-light [class~="border-[#555555]"] { border-color: #c9c0b3 !important; }
+body.theme-light [class~="hover:bg-[#2a2a2a]"]:hover { background-color: #ddd6ca !important; color: #1a1a1a !important; }
+body.theme-light [class~="hover:bg-[#3a3a3a]"]:hover { background-color: #ddd6ca !important; color: #1a1a1a !important; }
+body.theme-light [class~="hover:text-white"]:hover { color: #1a1a1a !important; }
+body.theme-light .quick-action-card { background: #fffdf9 !important; color: #242321 !important; }
+body.theme-light .quick-action-card:hover { background: #ddd6ca !important; color: #1a1a1a !important; }
+body.theme-light .quick-action-icon { background: #e7dfd1 !important; color: #1f1f1f !important; }
+body.theme-light [class~="text-[#f5f5f5]"] { color: #242321; }
+body.theme-light [class~="text-[#d3d3d3]"] { color: #4b4842; }
+body.theme-light [class~="text-[#ababab]"] { color: #6d675e; }
+body.theme-light [class~="border-[#3a3a3a]"] { border-color: #d3cabc; }
+body.theme-light [class~="border-[#444]"] { border-color: #c9c0b3; }
+body.theme-light [class~="border-[#444444]"] { border-color: #c9c0b3; }
+body.theme-light [class~="hover:bg-[#3a3a3a]"]:hover { background-color: #ddd6ca !important; }
+body.theme-light [class~="hover:text-[#f5f5f5]"]:hover { color: #1a1a1a !important; }
+body.theme-light [class~="group-hover:text-[#555555]"] { color: #2f2c29; }
+body.theme-light [class~="group-hover:text-[#f5f5f5]"]:hover { color: #1a1a1a !important; }
+body.theme-light .field { background: #fffdf9; color: #242321; border-color: #c9c0b3; }
+body.theme-light input::placeholder { color: #938b80; }
+body.theme-light .hold-panel,
+body.theme-light .hold-modal,
+body.theme-light .note-modal { background: #fffdf9 !important; color: #242321 !important; }
+body.theme-light .hold-panel-card { background: #f5f1e9 !important; color: #242321 !important; border-color: #d3cabc !important; }
+body.theme-light .hold-panel-empty,
+body.theme-light .hold-panel p,
+body.theme-light .hold-panel h2,
+body.theme-light .hold-modal p,
+body.theme-light .hold-modal h2,
+body.theme-light .note-modal p,
+body.theme-light .note-modal h2,
+body.theme-light .variation-modal p,
+body.theme-light .variation-modal h2 { color: #242321 !important; }
+body.theme-light .hold-panel-close,
+body.theme-light .hold-panel-discard,
+body.theme-light .hold-modal button,
+body.theme-light .note-modal button,
+body.theme-light .variation-close { color: #4b4842 !important; }
+body.theme-light .hold-panel-close:hover,
+body.theme-light .hold-panel-discard:hover,
+body.theme-light .variation-close:hover { background: #ddd6ca !important; color: #1a1a1a !important; }
+body.theme-light .hold-panel-discard { border-color: #c9c0b3 !important; }
+body.theme-light .hold-modal textarea,
+body.theme-light .note-modal textarea,
+body.theme-light .variation-modal { background: #fffdf9 !important; color: #242321 !important; border-color: #d3cabc !important; }
+body.theme-light .hold-modal textarea::placeholder,
+body.theme-light .note-modal textarea::placeholder { color: #938b80 !important; }
+body.theme-light .variation-modal { box-shadow: 0 20px 50px rgba(36, 35, 33, 0.12) !important; }
+body.theme-light .variation-option { background: #f5f1e9 !important; color: #242321 !important; border: 1px solid #d3cabc !important; }
+body.theme-light .variation-option:hover { background: #ddd6ca !important; color: #1a1a1a !important; }
+body.theme-light .hold-panel .text-\[#ababab\],
+body.theme-light .hold-modal .text-\[#ababab\],
+body.theme-light .note-modal .text-\[#ababab\],
+body.theme-light .variation-modal .text-\[#ababab\] { color: #6d675e !important; }
+body.theme-light .hold-panel .text-\[#f5f5f5\],
+body.theme-light .hold-modal .text-\[#f5f5f5\],
+body.theme-light .note-modal .text-\[#f5f5f5\],
+body.theme-light .variation-modal .text-\[#f5f5f5\] { color: #242321 !important; }

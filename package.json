@@ -1,0 +1,70 @@
+{
+  "name": "pfl",
+  "private": true,
+  "version": "2.2.1",
+  "description": "Lassi Shop point-of-sale desktop application",
+  "author": "Lassi Shop",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "desktop": "npm run build && electron .",
+    "db": "npm run build && electron . --db-viewer",
+    "desktop:win": "npm run dist && node -e \"const fs=require('fs'); const path=require('path'); const cp=require('child_process'); const base='release'; const candidates=[]; const walk=(dir)=>{for (const entry of fs.readdirSync(dir,{withFileTypes:true})) { const full=path.join(dir,entry.name); if (entry.isDirectory()) { walk(full); } else if (entry.name.toLowerCase() === 'lassi shop pos.exe') { candidates.push(full); }}}; if (fs.existsSync(base)) walk(base); const exe=candidates.find((p)=>fs.existsSync(p)); if (!exe) { const portable=path.join(base,'Lassi Shop POS.exe'); if (fs.existsSync(portable)) { console.log('Launching:', portable); cp.spawn(portable,{stdio:'inherit',shell:false}); process.exit(0); } console.error('Windows executable not found in release/.'); process.exit(1); } console.log('Launching:', exe); cp.spawn(exe,{stdio:'inherit',shell:false});\"",
+    "dist": "npm run build && electron-builder --win portable --x64",
+    "lint": "oxlint",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-icons": "^5.7.0",
+    "react-router-dom": "^7.18.2",
+    "ws": "^8.21.3",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.1.0",
+    "autoprefixer": "^10.5.4",
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.0",
+    "oxlint": "^1.79.0",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^3.4.19",
+    "vite": "^8.2.2"
+  },
+  "main": "electron/main.cjs",
+  "build": {
+    "appId": "com.lassishop.pos",
+    "productName": "Lassi Shop POS",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/*.cjs",
+      "node_modules/better-sqlite3/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": ".env",
+        "to": ".env"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Lassi Shop POS.exe"
+    }
+  }
+}

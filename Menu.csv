@@ -1,0 +1,381 @@
+"Item ID",Category,"Item Name",Variation,"Online Display Name","Item Type",Price,Description,Dietary,"Short Code","Sap Code","HSN Code",Weight,"Weight Unit",Rank,"Packing Charges","Expose in Captain",Goods/Services,"Short Code Two","Allow Decimal Qty","Manufacturing Date (DD-MM-YYYY)","Expiry Date (DD-MM-YYYY)","Dine-In QR"
+1286069371,"Ice Creams","Scoop Ice Cream",,,item,60.00,"A classic single scoop of ice cream.",veg,~119,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069372,"Ice Creams","Fruit Salad With Ice Cream",,,item,90.00,"A refreshing fruit salad served with a scoop of ice cream.",veg,fs,,,,,1,0,Yes,,,Yes,,,Yes
+1286069373,"Ice Creams","Cookies With Cream",,,item,90.00,"Delicious cookies served with rich cream.",veg,cc,,,,,1,0,Yes,,,Yes,,,Yes
+1286069374,"Ice Creams","Mexican Brownie",,,item,80.00,"A rich and flavorful Mexican-style brownie.",veg,MM,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069375,"Ice Creams","Chocolate Fudge",,,item,90.00,"Indulgent chocolate fudge dessert.",veg,~500,,,,,1,0,Yes,,,Yes,,,Yes
+1286069376,"Ice Creams","Butter Scotch Fudge",,,item,130.00,"Sweet and creamy butterscotch fudge.",veg,~501,,,,,1,0,Yes,,,Yes,,,Yes
+1286069377,"Ice Creams","Death By Chocolate",,,item,130.00,"An intensely rich chocolate dessert, a chocoholic's dream.",veg,~7,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069378,"Ice Creams","Lychee With Ice Cream",,,item,130.00,"Refreshing lychee served with a scoop of ice cream.",veg,~8,,,,,1,0,Yes,,,Yes,,,Yes
+1286069379,"Ice Creams",Gudbud,,,item,130.00,"A mixed ice cream sundae with various toppings and flavors.",veg,~9,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069380,"Ice Creams","Sunday Funday",,,item,130.00,"A delightful ice cream treat perfect for a fun day.",veg,~10,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069381,"Ice Creams","All Mix Ice Cream",,,item,140.00,"A medley of various ice cream flavors.",veg,~11,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069382,"Ice Creams","Dry Fruit Sundae",,,item,140.00,"A classic sundae topped with an assortment of dry fruits.",veg,~12,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069383,"Ice Creams","Sizzling Brownie - Hot Chocolate",,,item,140.00,"A warm, sizzling brownie served with hot chocolate.",veg,~13,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069384,Nuttellas,"Nutella Fudge",,,item,130.00,"Rich and creamy fudge infused with Nutella.",veg,~14,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069385,Nuttellas,"Nutella Brownie",,,item,130.00,"A decadent brownie made with Nutella.",veg,~15,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069386,Nuttellas,"Nutella Lychee",,,item,130.00,"An unusual but delicious combination of Nutella and lychee.",veg,~16,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069387,Nuttellas,"Nutella Butterscotch",,,item,130.00,"A delightful mix of Nutella and butterscotch flavors.",veg,~17,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069388,Nuttellas,"Nutella Chocolate",,,item,130.00,"A double chocolate treat with Nutella.",veg,~18,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069389,Nuttellas,"Nutella Cookies",,,item,130.00,"Cookies flavored or filled with Nutella.",veg,~19,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069390,Nuttellas,"Nutella Oreo",,,item,130.00,"A sweet treat combining Nutella and Oreo cookies.",veg,~20,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069391,Nuttellas,"Nutella Bourbon",,,item,130.00,"A unique blend of Nutella and bourbon flavors.",veg,~21,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069392,Mocktails,"Banana Milkshake",,,item,60.00,"A refreshing banana-flavored mocktail.",veg,"banana milkshake",,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069393,Mocktails,"Chickoo / Sapota",,,item,80.00,"A sweet mocktail made from chickoo (sapota).",veg,"chickoo / sapota",,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069394,Mocktails,Sapota,,sapota,item,70.00,"A sweet mocktail made from chickoo (sapota).",veg,~24,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069395,Mocktails,"Musk Melon",,,item,60.00,"A cool and refreshing musk melon mocktail.",veg,"musk melon",,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069396,Mocktails,Anar,,,item,80.00,"A delightful blend of pomegranate (anar) and apple in a mocktail.",veg,anar,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069397,Mocktails,"Apple Shake",,,item,80.00,"A delightful blend of pomegranate (anar) and apple in a mocktail.",veg,"apple shake",,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069398,Mocktails,Avocado,,,item,80.00,"A creamy mocktail featuring avocado, also known as butter fruit.",veg,~5,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069399,Mocktails,"Butter Fruit",,"butter fruit",item,80.00,"A creamy mocktail featuring avocado, also known as butter fruit.",veg,~29,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069400,Mocktails,"Mango Avocado",,"mango avocado",item,80.00,"A tropical mocktail combining mango and creamy avocado.",veg,~30,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069401,Mocktails,"Strawberry Avocado",,"strawberry avocado",item,80.00,"A unique mocktail with the sweet tartness of strawberry and creamy avocado.",veg,~31,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069402,Mocktails,"Frozen Bourbon",,"frozen bourbon",item,90.00,"A chilled and refreshing mocktail with a bourbon flavor profile.",veg,~32,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069403,Mocktails,"Hopschotch Butterscotch",,"hopschotch butterscotch",item,90.00,"A sweet and fun mocktail with a butterscotch flavor.",veg,~33,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069404,Mocktails,"Blue Berry Dryfruit",,"blue berry dryfruit",item,130.00,"A mocktail blending blueberry and dry fruit flavors.",veg,~34,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069405,Mocktails,"Blue Berry Lychee",,"blue berry lychee",item,130.00,"A sweet and tangy mocktail with blueberry and lychee.",veg,~35,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069406,Mocktails,"Lychee & Lychee",,"lychee & lychee",item,130.00,"A mocktail featuring a double dose of refreshing lychee flavor.",veg,~36,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069407,Mocktails,"Lychee & Mango",,"lychee & mango",item,130.00,"A tropical mocktail combining sweet lychee and ripe mango.",veg,~37,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069408,Mocktails,"Berry Blue Berry Shake",,"berry blue berry shake",item,120.00,"A sweet shake with mixed berries and blueberries.",veg,~38,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069409,Mocktails,"Nutella Shake",,"nutella shake",item,130.00,"A creamy and rich shake made with Nutella.",veg,~39,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069410,"Cold Coffees","Hard Rock Coffee",,,item,70.00,"A strong and invigorating cold coffee.",veg,~40,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069411,"Cold Coffees","Coffee On The Rocks",,,item,70.00,"A classic cold coffee served over ice.",veg,~41,,,,,1,0,Yes,,,Yes,,,Yes
+1286069412,"Cold Coffees","Swedish House Mafia",,,item,80.00,"A unique cold coffee creation named after the popular music group.",veg,~42,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069413,"Cold Coffees","Mud Coffee",,,item,100.00,"A thick and rich cold coffee, similar to a 'mudslide' consistency.",veg,~43,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069414,"Cold Coffees","Ferrerro Coffee",,,item,100.00,"A luxurious cold coffee flavored with Ferrero Rocher or Belgian chocolate notes.",veg,~44,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069415,"Cold Coffees","Belgium Coffee",,,item,100.00,"A luxurious cold coffee flavored with Ferrero Rocher or Belgian chocolate notes.",veg,~45,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069416,Specials,"Fruit Overload",,,item,140.00,"A special dessert featuring a generous amount of fresh fruits, perfect for fruit lovers.",veg,~46,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069417,Specials,"Boat Sundae",,,item,140.00,"A delightful sundae served in a boat-shaped dish, offering a classic dessert experience.",veg,~47,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069418,Specials,"Banana Split",,,item,140.00,"A traditional dessert with a banana split lengthwise, complemented by scoops of ice cream and sweet toppings.",veg,~48,,,,,1,0,Yes,,,Yes,,,Yes
+1286069419,Mocktails,"Banana Bonkers",,,item,70.00,"A refreshing mocktail featuring the sweet and creamy flavor of banana.",veg,~49,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069420,Mocktails,"Belgian Chocolate",,,item,70.00,"A rich and indulgent mocktail crafted with the decadent taste of Belgian chocolate.",veg,~50,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069421,Mocktails,"Mango Alphonso",,,item,70.00,"A tropical mocktail highlighting the sweet and aromatic flavor of Alphonso mango.",veg,~51,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069422,Mocktails,"Very Bery Strawberry",,,item,70.00,"A delightful mocktail bursting with the sweet and fruity essence of fresh strawberries.",veg,~6,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069423,Mocktails,"Ferraro Automatic",,,item,70.00,"A unique and luxurious mocktail inspired by the classic Ferraro Rocher chocolate.",veg,~53,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069424,Mocktails,"Green Mojito",,,item,70.00,"A refreshing mocktail available in vibrant green or rich kesar pista flavors.",veg,~54,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069425,Mocktails,"Kesar Pista Shake",,"kesar pista shake",item,70.00,"A refreshing mocktail available in vibrant green or rich kesar pista flavors.",veg,~55,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069426,Mocktails,"Tropical Mixfruit",,"tropical mixfruit",item,70.00,"A lively mocktail blending a variety of sweet and tangy tropical fruits.",veg,~56,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069427,Mocktails,"Vanilla Shake",,"vanilla shake",item,70.00,"A smooth and classic mocktail with the sweet and comforting flavor of vanilla.",veg,~57,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069428,Mocktails,"Body Cooler",,"body cooler",item,70.00,"A revitalizing mocktail designed to cool and refresh, perfect for hot days.",veg,~58,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069429,Mocktails,"Mango Strawberry",,"mango strawberry",item,80.00,"A delightful mocktail combining the sweet richness of mango with the fresh tartness of strawberry.",veg,~59,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069430,Mocktails,"Belgian Chips",,"belgian chips",item,80.00,"A unique mocktail featuring the distinctive flavor inspired by Belgian chocolate chips.",veg,~60,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069431,Mocktails,"Brownie Shake",,"brownie shake",item,90.00,"A rich and creamy shake infused with the irresistible taste of chocolate brownies.",veg,~61,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069432,Mocktails,"Oreo Shake",,"oroe shake",item,90.00,"A delicious and creamy shake featuring the popular cookie flavor, Oroe.",veg,~62,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069433,Mocktails,"Strawberry With Ice",,"strawberry with ice",item,90.00,"A chilled and refreshing drink made with fresh strawberries, served over ice.",veg,~63,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069434,Mocktails,"Tender Coconut",,"tender coconut",item,90.00,"A natural and hydrating drink made from the refreshing water of tender coconuts.",veg,~64,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069435,Mocktails,Sharjah,,sharjah,item,90.00,"A popular and refreshing Sharjah-style drink, often a blend of fruits and milk.",veg,~65,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069436,Mocktails,"Dry Fruit Shake",,,item,0,"A nutritious and energy-boosting shake blended with a rich assortment of dry fruits.",veg,~66,,"	",,,1,0,Yes,,,Yes,,,Yes
+1306258249,Mocktails,"Dry Fruit Shake (Small)",Small,,variation,130.00,"A nutritious and energy-boosting shake blended with a rich assortment of dry fruits.",veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069437,Mocktails,"Mississippi Mud",,,item,100.00,"A decadent and rich shake, inspired by the classic Mississippi Mud dessert.",veg,"mississippi mud",,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069438,Mocktails,"Oreo Mud",,"oreo mud",item,100.00,"A delightful shake combining the flavors of rich Oreo mud and crunchy Kitkat.",veg,~68,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069439,Mocktails,"Kitkat Mud",,"kitkat mud",item,100.00,"A delightful shake combining the flavors of rich Oreo mud and crunchy Kitkat.",veg,~69,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069440,Mocktails,"Choco More Chocolate",,"choco more chocolate",item,100.00,"An intensely rich and extra chocolatey shake for true chocolate enthusiasts.",veg,~70,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069441,Mocktails,"Black Current Shake",,"black current shake",item,100.00,"A sweet and tangy shake made with the distinct flavor of black current berries.",veg,~71,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069442,"Fresh Juice","Pineapple Juice",,,item,60.00,"A refreshing and tangy juice made from fresh pineapples.",veg,~72,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069443,"Fresh Juice","Water Melon Juice",,,item,60.00,"A hydrating and sweet juice made from fresh watermelon.",veg,~73,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069444,"Fresh Juice","Mosambi Juice",,,item,60.00,"A sweet and slightly tart juice made from fresh mosambi (sweet lime).",veg,~74,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069445,"Fresh Juice","Musk Melon Juice",,,item,60.00,"A fragrant and sweet juice made from fresh musk melon.",veg,~75,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069446,"Lime Juices","Fresh Lime Juice",,,item,50.00,"A classic and zesty juice made from freshly squeezed limes.",veg,~76,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069447,"Lime Juices","Jaljeera Lime Juice",,,item,60.00,"A tangy and spicy lime juice infused with traditional jaljeera masala.",veg,~77,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069448,"Lime Juices","Ginger Lime Juice",,,item,50.00,"A refreshing lime juice with a warm, spicy kick of ginger.",veg,~78,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069449,"Lime Juices","Morocan Mint Lime Juice",,,item,60.00,"A cool and invigorating lime juice infused with aromatic Moroccan mint.",veg,~79,,,,,1,0,Yes,,,Yes,,,Yes
+1286069450,Lassis,"Sweet Lassi",,,item,50.00,"A traditional Indian yogurt-based drink, sweet and creamy.",veg,~80,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069451,Lassis,"Banana Lassi",,,item,60.00,"A creamy and wholesome lassi blended with fresh bananas.",veg,~81,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069452,Lassis,"Mango Lassi",,,item,60.00,"A rich and fruity lassi made with sweet mango pulp.",veg,~82,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069453,Lassis,"Fruit Lassi",,,item,70.00,"A refreshing lassi blended with a medley of various fruits.",veg,~83,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069454,Lassis,"Strawberry Lassi",,,item,70.00,"A delightful and creamy lassi featuring the sweet taste of strawberries.",veg,~84,,,,,1,0,Yes,,,Yes,,,Yes
+1286069455,Lassis,"Chocolate Lassi",,,item,70.00,"A decadent lassi with a rich and satisfying chocolate flavor.",veg,~85,,,,,1,0,Yes,,,Yes,,,Yes
+1286069456,Lassis,"Saffron Lassi",,,item,70.00,"A luxurious lassi infused with the delicate aroma and color of saffron.",veg,~86,,,,,1,0,Yes,,,Yes,,,Yes
+1286069457,Lassis,"Dry Fruit Lassi",,,item,100.00,"A nutritious and rich lassi blended with a variety of healthy dry fruits.",veg,~87,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069458,Lassis,"Shahi Lassi",,,item,100.00,"A royal and indulgent lassi, often richer and creamier with added nuts.",veg,~88,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069459,Faloodas,"Cream Falooda",,,item,90.00,"A popular Indian cold dessert drink with vermicelli, basil seeds, and cream.",veg,~89,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069460,Faloodas,"Kesar Falooda",,,item,100.00,"A fragrant and delicious falooda flavored with aromatic saffron (kesar).",veg,~90,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069461,Sodas,"Sweet Lime Soda",,,item,70.00,"A refreshing lime soda, available in your choice of sweet or salty preparation.",veg,~91,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069462,Sodas,"Salt Lime Soda",,,item,70.00,"A refreshing lime soda, available in your choice of sweet or salty preparation.",veg,~92,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069463,Sodas,"Blue Lime Soda",,,item,70.00,"A vibrant and refreshing lime soda with a striking blue color.",veg,~93,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069464,Sodas,"Ginger Lime Soda",,,item,70.00,"A zesty and invigorating lime soda with a hint of spicy ginger.",veg,~94,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069465,Sodas,"Masala Lime Soda",,,item,70.00,"A tangy and spiced lime soda, infused with traditional Indian masalas.",veg,~95,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069466,Sodas,"Jaljeera Lime Soda",,,item,70.00,"A refreshing and tangy lime soda with the distinctive flavor of jaljeera.",veg,~96,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069467,Sodas,"Berry Pepper Shot",,,item,70.00,"A unique and zesty shot combining fruity berry flavors with a hint of pepper.",veg,~97,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069468,Sodas,"Blue Lime",,,item,70.00,"A vibrant and refreshing blue-colored drink with a zesty lime flavor.",veg,~98,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069469,Sodas,"Red Lime",,,item,70.00,"A refreshing and visually appealing red-colored drink with a tangy lime taste.",veg,~99,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069470,Sodas,"Purple Lime",,,item,70.00,"A unique and refreshing purple-colored drink with a zesty lime flavor.",veg,~100,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069471,Mojitos,"Blue Lime Mojito",,,item,70.00,"A cool and refreshing mojito featuring vibrant blue lime flavor.",veg,~101,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069472,Mojitos,"Blue Berry Mojito",,,item,70.00,"A sweet and tangy mojito made with juicy blueberries and refreshing mint.",veg,~102,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069473,Mojitos,"Mint Lime Mojito",,,item,70.00,"A classic and invigorating mojito with fresh mint and zesty lime.",veg,~103,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069474,Mojitos,"Pineapple Lime Mojito",,,item,70.00,"A tropical and refreshing mojito combining sweet pineapple with tangy lime.",veg,~104,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069475,Specials,"Avocado Dry Fruits",,,item,140.00,"A unique special blend featuring creamy avocado and a mix of nutritious dry fruits.",veg,~105,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069476,Specials,"Chocolate Master Shake",,,item,150.00,"A expertly crafted, rich and luxurious chocolate shake.",veg,~106,,,,,1,0,Yes,,,Yes,,,Yes
+1286069477,Specials,"Vanilla Master Shake",,,item,150.00,"A perfectly blended, classic vanilla shake crafted by a master.",veg,~107,,,,,1,0,Yes,,,Yes,,,Yes
+1286069478,Specials,"Strawberry Master Shake",,,item,150.00,"A skillfully prepared shake highlighting the sweet and fresh taste of strawberries.",veg,~108,,,,,1,0,Yes,,,Yes,,,Yes
+1286069479,Specials,"Mango Master Shake",,,item,150.00,"A masterfully crafted shake featuring the rich and tropical flavor of mango.",veg,~109,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069480,Specials,"Watermelon Sundae",,,item,320.00,"A refreshing and sweet sundae featuring fresh and juicy watermelon.",veg,~110,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069481,Faloodas,"Kulfi Falooda",,,item,100.00,"A sweet Indian dessert drink with Kulfi.",veg,~111,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069482,Faloodas,"Anjeer Falooda",,,item,100.00,"A sweet Indian dessert drink with figs.",veg,~112,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069483,Faloodas,"Delhi Style Falooda",,,item,100.00,"A sweet Indian dessert drink prepared in Delhi style.",veg,~113,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069484,Faloodas,"Mango Falooda",,,item,100.00,"A sweet Indian dessert drink featuring mango.",veg,~114,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069485,Faloodas,"Desert Falooda",,,item,100.00,"A sweet Indian dessert drink featuring mango.",veg,~115,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069486,Faloodas,"Royal Falooda",,,item,130.00,"A rich and grand sweet Indian dessert drink.",veg,~116,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069487,Kulfis,"Malai Kulfi",,,item,50.00,"Traditional Indian frozen dairy dessert with creamy malai flavor.",veg,"Malai Kulfi",,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069488,Kulfis,"Badam Kulfi",,,item,50.00,"Traditional Indian frozen dairy dessert with almond flavor.",veg,"Badam Kulfi",,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069489,Kulfis,"Pista Kulfi",,,item,50.00,"Traditional Indian frozen dairy dessert with pistachio flavor.",veg,"Pista Kulfi",,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069490,Protein,"Natural Whey Protein",,,item,80.00,"A natural protein supplement derived from whey.",veg,~120,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069491,Protein,"Whey Protein",,,item,100.00,"A protein supplement derived from whey.",veg,~121,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069492,Smoothies,"Banana Smoothies",,,item,90.00,"A refreshing blend of banana.",veg,~122,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069493,Smoothies,"Mango Smoothies",,,item,90.00,"A refreshing blend of fresh mango.",veg,~123,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069494,Smoothies,"Strawberry Smoothies",,,item,90.00,"A refreshing blend of strawberries.",veg,~124,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069495,Smoothies,"Blueberry Smoothies",,,item,100.00,"A refreshing blend of blueberries.",veg,~125,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069496,Snacks,"French Fries",,,item,0,"Crispy fried potato sticks, available in small and large portions.",veg,~126,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069534,Snacks,"French Fries (small)",small,,variation,80.00,"Crispy fried potato sticks, available in small and large portions.",veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069535,Snacks,"French Fries (large)",large,,variation,150.00,"Crispy fried potato sticks, available in small and large portions.",veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069497,Snacks,"Masala French Fries",,,item,0,"French fries seasoned with a special blend of masala spices.",veg,~129,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069536,Snacks,"Masala French Fries (Regular)",Regular,,variation,100.00,"French fries seasoned with a special blend of masala spices.",veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069537,Snacks,"Masala French Fries (large)",large,,variation,190.00,"French fries seasoned with a special blend of masala spices.",veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069498,Snacks,"Cheese Mayo Fries",,,item,0,"Crispy fries topped with a creamy cheese and mayonnaise sauce.",veg,~132,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069538,Snacks,"Cheese Mayo Fries (Regular)",Regular,,variation,100.00,"Crispy fries topped with a creamy cheese and mayonnaise sauce.",veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069539,Snacks,"Cheese Mayo Fries (large)",large,,variation,200.00,"Crispy fries topped with a creamy cheese and mayonnaise sauce.",veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069499,Snacks,"Sweet Corn",,,item,60.00,"Boiled sweet corn kernels, a simple and tasty snack.",veg,~135,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069500,Snacks,"Masala Sweet Corn",,,item,60.00,"Sweet corn kernels seasoned with a flavorful masala spice blend.",veg,~136,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069501,Snacks,"Aloo Tikki",,,item,90.00,"Spiced potato patty, fried until golden and crispy.",veg,~137,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069502,Snacks,"Potato Wedges",,,item,90.00,"Thick-cut potato wedges, seasoned and fried to perfection.",veg,~138,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069503,Snacks,"Potato Smileys",,,item,90.00,"Fun, smile-shaped potato bites, crispy on the outside and soft inside.",veg,~139,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069504,Snacks,"Veg Nuggets",,,item,90.00,"Crispy fried nuggets made with a mix of vegetables.",veg,~140,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069505,Snacks,"Veggie Finger",,,item,90.00,"Long, crispy sticks made from mixed vegetables.",veg,~141,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069506,Snacks,"Chesse Mini Samosa",,,item,90.00,"Small, crispy samosas filled with savory cheese.",veg,~142,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069507,Snacks,"Garlic Potato Pops",,,item,90.00,"Bite-sized potato snacks infused with garlic flavor.",veg,~143,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069508,Snacks,"Chesse Shots",,,item,90.00,"Crispy, cheesy bites, perfect for a quick snack.",veg,~144,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069509,Snacks,"Chicken Loaded",,,item,170.00,"Delicious chicken prepared in two exciting flavors: classic or spicy Peri Peri.",non-veg,~231,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069510,Snacks,"Peri Peri Chicken Loaded",,,item,190.00,"Delicious chicken prepared in two exciting flavors: classic or spicy Peri Peri.",non-veg,~232,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069511,Sandwichs,"Plain Veg Sandwich",,"plain veg sandwich",item,90.00,"A simple vegetarian sandwich, a classic and light meal option.",veg,~147,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069512,Sandwichs,"Veg Chesse Sandwich",,,item,100.00,"A delicious vegetarian sandwich filled with cheese and mixed vegetables.",veg,~148,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069513,Sandwichs,"Corn Chesse Sandwich",,,item,100.00,"A delightful sandwich combining the sweetness of corn with savory cheese.",veg,~149,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069514,Sandwichs,"Paneer Cheese Sandwich",,,item,120.00,"A rich and flavorful sandwich featuring Indian paneer cheese.",veg,~150,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069515,Sandwichs,"Chicken Cheese Sandwich",,,item,120.00,"A savory sandwich packed with flavorful chicken and melted cheese.",non-veg,~151,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069516,Burger,"Veg Chesse Burger",,,item,100.00,"A delicious vegetarian cheese burger.",veg,~152,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069517,Burger,"Veg Chesse Burger Jumbo",,,item,120.00,"A larger vegetarian cheese burger.",veg,~153,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069518,Burger,"Chicken Cheese Burger",,,item,140.00,"A savory chicken cheese burger.",non-veg,~154,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069519,Burger,"Chicken Cheese Burger Jumbo",,,item,150.00,"A larger savory chicken cheese burger.",non-veg,~155,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069520,"Combo Offers","Veg Cheese Burger+fries+cold",,,item,160.00,"Combo: veg cheese burger, fries, and cold drink.",veg,~156,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069521,"Combo Offers","Chicken Cheese Burger+fries +cold",,,item,190.00,"Combo: chicken cheese burger, fries, and cold drink.",non-veg,~157,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069522,"Combo Offers","Garlic Cheese Bread",,,item,170.00,"Toasted bread with garlic and cheese.",veg,~158,,,,,1,0,Yes,,,Yes,,,Yes
+1286069523,Pizzas,"Margherita Pizza",,,item,0,"Classic delight with tangy tomato sauce and gooey mozzarella cheese.",veg,~159,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069540,Pizzas,"Margherita Pizza (small)",small,,variation,150.00,"Classic delight with tangy tomato sauce and gooey mozzarella cheese.",veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069541,Pizzas,"Margherita Pizza (large)",large,,variation,250.00,"Classic delight with tangy tomato sauce and gooey mozzarella cheese.",veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069524,Pizzas,"Veg Chesse Pizza",,,item,0,"Loaded with veggies and topped with a generous layer of melted cheese.",veg,~2,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069542,Pizzas,"Veg Chesse Pizza (small)",small,,variation,160.00,"Loaded with veggies and topped with a generous layer of melted cheese.",veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069543,Pizzas,"Veg Chesse Pizza (large)",large,,variation,250.00,"Loaded with veggies and topped with a generous layer of melted cheese.",veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069525,Pizzas,"Corn Chesse Pizza",,,item,0,,veg,~1,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069544,Pizzas,"Corn Chesse Pizza (small)",small,,variation,160.00,,veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069545,Pizzas,"Corn Chesse Pizza (large)",large,,variation,250.00,,veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069526,Pizzas,"Paneer Cheese Pizza",,,item,0,,veg,~3,,,,,1,0,Yes,,,Yes,,,Yes
+1286069546,Pizzas,"Paneer Cheese Pizza (small)",small,,variation,190.00,,veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069547,Pizzas,"Paneer Cheese Pizza (large)",large,,variation,350.00,,veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069527,Pizzas,"Crispy Chicken Pizza",,,item,0,,non-veg,~171,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069548,Pizzas,"Crispy Chicken Pizza (small)",small,,variation,210.00,,non-veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069549,Pizzas,"Crispy Chicken Pizza (large)",large,,variation,410.00,,non-veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069528,"Special Pizzas","Cheese Burst Pizza",,,item,370.00,"Special pizza with a delicious cheese burst crust.",veg,~174,,,,,1,0,Yes,,,Yes,,,Yes
+1286069529,"Special Pizzas","Veg Cheese Burst Pizza",,,item,450.00,"A delectable vegetarian pizza featuring a rich cheese burst crust.",veg,~175,,,,,1,0,Yes,,,Yes,,,Yes
+1286069530,"Special Pizzas","Corn Cheese Burst Pizza",,,item,450.00,"A delightful pizza topped with sweet corn and a delicious cheese burst crust.",veg,~176,,,,,1,0,Yes,,,Yes,,,Yes
+1286069531,"Special Pizzas","Paneer Cheese Burst Pizza",,,item,500.00,"A vegetarian pizza made with tender paneer and a rich, cheesy burst crust.",veg,~177,,"	",,,1,0,Yes,,,Yes,,,Yes
+1286069532,"Special Pizzas","Chicken Cheese Burst Pizza",,,item,500.00,"A savory pizza featuring chicken and a mouth-watering cheese burst crust.",non-veg,~178,,,,,1,0,Yes,,,Yes,,,Yes
+1286069533,"Special Pizzas","Chicken Tikka Pizza",,,item,500.00,"A flavorful pizza generously topped with spicy chicken tikka pieces.",non-veg,~179,,,,,1,0,Yes,,,Yes,,,Yes
+1286250117,"Cold Drinks",Pepsi,,Pepsi,item,0,,veg,~204,,"	",,ml,1,0,Yes,goods,,Yes,,,Yes
+1286250118,"Cold Drinks","Pepsi (Small)",Small,Pepsi,variation,20.00,,veg,,,"	",,ml,1,0,Yes,goods,,Yes,,,Yes
+1286250119,"Cold Drinks","Pepsi (Regular)",Regular,Pepsi,variation,50.00,,veg,,,"	",,ml,1,0,Yes,goods,,Yes,,,Yes
+1286250120,"Cold Drinks","Pepsi (Large)",Large,Pepsi,variation,100.00,,veg,,,"	",,ml,1,0,Yes,goods,,Yes,,,Yes
+1286689318,"Cold Drinks","Pepsi (Medium)",Medium,Pepsi,variation,60.00,,veg,,,"	",,ml,1,0,Yes,goods,,Yes,,,Yes
+1286250170,"Cold Drinks","Coca Cola",,Coke,item,0,,veg,Coke,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286250171,"Cold Drinks","Coca Cola (Small)",Small,Coke,variation,20.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286250172,"Cold Drinks","Coca Cola (Regular)",Regular,Coke,variation,50.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286250173,"Cold Drinks","Coca Cola (Large)",Large,Coke,variation,100.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286250259,"Combo Offers","Veg Cheese Burger",,"VCB 1+1",item,100.00,,veg,VCB,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286250417,"Combo Offers","Veg Cheese Sandwich",,"VCS 1+1",item,100.00,,veg,VCS,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286259785,"Cold Drinks","Water Bottle",,"water bottle",item,0,"water bottle cold or warm",veg,wb,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286259786,"Cold Drinks","Water Bottle (Small)",Small,"water bottle",variation,10.00,"water bottle cold or warm",veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286259787,"Cold Drinks","Water Bottle (Regular)",Regular,"water bottle",variation,20.00,"water bottle cold or warm",veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286259788,"Cold Drinks","Water Bottle (Large)",Large,"water bottle",variation,30.00,"water bottle cold or warm",veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286270190,Pizzas,"Chicken Pizza",,"chicken pizza",item,0,"chicken,cheese,veg",non-veg,~4,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286270191,Pizzas,"Chicken Pizza (Small)",Small,"chicken pizza",variation,190.00,"chicken,cheese,veg",non-veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286270192,Pizzas,"Chicken Pizza (Large)",Large,"chicken pizza",variation,350.00,"chicken,cheese,veg",non-veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286344547,Snacks,"Chicken Popcorn",,"chicken popcorn",item,0,,non-veg,~212,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286344548,Snacks,"Chicken Popcorn (Small)",Small,"chicken popcorn",variation,150.00,,non-veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286344549,Snacks,"Chicken Popcorn (Large)",Large,"chicken popcorn",variation,290.00,,non-veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286345081,Rolls,"Shawarma Roll",,shawarma,item,90.00,,veg,lsh,,,,,1,0,Yes,services,~67,Yes,,,Yes
+1286345082,Rolls,"Plate Shawarma",,"Plate Shawarma",item,130.00,,veg,ps,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286345083,Rolls,"Paneer Paradise Roll",,"paneer paradise roll",item,100.00,,veg,ppr,,"	",,,1,0,Yes,services,~218,Yes,,,Yes
+1286345084,Rolls,"Chicken Tikka Roll",,"chicken tikka roll",item,100.00,,non-veg,ctr,,"	",,,1,0,Yes,services,~217,Yes,,,Yes
+1286345085,Rolls,"Crispy Chicken Roll",,"crispy chicken roll",item,100.00,,non-veg,ccr,,"	",,,1,0,Yes,services,~219,Yes,,,Yes
+1286345300,Rolls,"Only Chicken Shawerma",,"only chicken shawerma",item,110.00,,non-veg,ocs,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286347106,Mocktails,"Green Pista",,"green pista",item,70.00,,veg,gpm,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286347735,Pizzas,"Chicken Cheese Burst",,"Chicken Cheese Burst",item,500.00,"Juicy chicken with extra cheese oozing from a soft, cheesy crust.",non-veg,cbcp,,,,,1,0,Yes,services,,Yes,,,Yes
+1286348461,Pizzas,"Paneer Cheese Burst",,"paneer cheese burst",item,500.00,"Spiced paneer cubes with crunchy veggies and rich cheesy goodness.",veg,pcb,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286348758,Pizzas,"Veg Cheese Burst",,"veg cheese burst",item,450.00,,veg,vegcb,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286349172,Chocolate,"DM 5",,cdm,item,5.00,,veg,cdm,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286349187,Chocolate,Dm10rs,,"dairy milk",item,10.00,,veg,dm,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286349197,Chocolate,"Dm 20",,"cadbury dm",item,20.00,,veg,CDM1,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286349236,Chocolate,"Fruit & Nut",,"fruit & nut",item,55.00,,veg,CDM2,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286349251,Chocolate,"Fruits & Nuts",,"fruits & nuts",item,50.00,,veg,CDM3,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286349417,Chocolate,"F And N",,"f and n",item,100.00,,veg,CDM4,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286349433,Chocolate,"Silk Bubbly",,"silk bubbly",item,100.00,,veg,"silk bubbly",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350009,Chocolate,"Cadbury Big",,"cadbury big",item,130.00,,veg,"CDM BIG",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350038,Chocolate,"Cadbury Silk",,"cadbury silk",item,220.00,,veg,Silk,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350056,Chocolate,"Kit Kat",,"kit kat",item,10.00,,veg,kk,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350071,Chocolate,Kitkat,,kitkat,item,20.00,,veg,kk1,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350103,Chocolate,"Nestle Kk",,"nestle kk",item,35.00,,veg,kk2,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350126,Chocolate,"Sharp N Snap",,"sharp n snap",item,55.00,,veg,kk3,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350150,"Ice Creams","Ice 5",,ice,item,5.00,,veg,"ice 5",,,,,1,0,Yes,services,,Yes,,,Yes
+1286350177,"Ice Creams","Ice 10",,"ice 10",item,10.00,,veg,"ice 10",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350181,"Ice Creams","Ice 15",,"ice 15",item,15.00,,veg,"ice 15",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350548,"Ice Creams","Ice 20",,"ice 20",item,20.00,,veg,"ice 20",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350573,"Ice Creams","Ice 25",,"ice 25",item,25.00,,veg,"ice 25",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350587,"Ice Creams","Ice 30",,"ice 30",item,30.00,,veg,"ice 30",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350599,"Ice Creams","Ice 35",,"ice 35",item,35.00,,veg,"ice 35",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350616,"Ice Creams","Ice 40",,"ice 40",item,40.00,,veg,"ice 40",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350826,"Ice Creams","Ice 45",,"ice 45",item,45.00,,veg,"ice 45",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350836,"Ice Creams","Ice 50",,"ice 50",item,50.00,,veg,"ice 50",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350853,"Ice Creams","Ice 60",,"ice 60",item,60.00,,veg,"ice 60",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350876,"Ice Creams","Cone Ice",,"cone ice",item,10.00,,veg,"cone ice",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350886,"Ice Creams","Cone Ice 30",,"cone ice 30",item,30.00,,veg,"cone ice 30",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350892,"Ice Creams","Cone Ice 35",,"cone ice 35",item,35.00,,veg,"cone ice 35",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286350897,"Ice Creams","Cone Ice 50",,"cone ice 50",item,50.00,,veg,"cone ice 50",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286351141,"Ice Creams","Ice Family Pack",,"ice family pack",item,115.00,,veg,"family pack",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286351155,"Ice Creams","Family Pack 125",,"family pack",item,125.00,,veg,fp,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286351164,"Ice Creams","Ice Fp",,"ice fp",item,135.00,,veg,"ice fp",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286351172,"Ice Creams","Ice Pf 150",,"ice pf 150",item,150.00,,veg,"ice pf 150",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286351207,"Ice Creams","Ice Fp 160",,"ice fp 160",item,160.00,,veg,"ice fp 160",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286351219,"Ice Creams","Ifp 190",,"ifp 190",item,190.00,,veg,"ifp 190",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286351280,"Ice Creams","Family Pack 1+1",,"family pack 1+1",item,0,,veg,"family pack 1+1",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286351281,"Ice Creams","Family Pack 1+1 (Buy 1 Get 1)","Buy 1 Get 1","family pack 1+1",variation,320.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286351356,"Ice Creams","Family Pack 1+1 (One + One)","One + One","family pack 1+1",variation,380.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286351407,"Ice Creams","Amul Family Pack",,"amul family pack",item,0,,veg,afp,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286351408,"Ice Creams","Amul Family Pack (Buy 1 Get 1)","Buy 1 Get 1","amul family pack",variation,230.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286351409,"Ice Creams","Amul Family Pack (One + One)","One + One","amul family pack",variation,250.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286352159,"Ice Creams","Amul Fp",,"amul fp",item,340.00,,veg,"amul fp",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286352187,Chocolate,Perk,,perk,item,5.00,,veg,perk,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286353768,"Ice Creams","Ice 100",,"ice 100",item,100.00,,veg,"ice 100",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286353791,Chocolate,"Tic Tac",,"tic tac",item,5.00,,veg,tt,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286353802,Chocolate,Tictak,,tictak,item,10.00,,veg,tt10,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286353809,Chocolate,"Kinder Joy",,"kinder joy",item,50.00,,veg,kj,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286353812,Chocolate,"Kinder Cream",,"kinder cream",item,30.00,,veg,kc,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286353826,Chocolate,Kinder,,kinder,item,40.00,,veg,ksbc,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286370085,"Ice Creams","Amul Fp1",,"amul fp1",item,210.00,,veg,"amul fp1",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286420059,Mocktails,"Master Shake",,"master shake",item,0,,veg,ms,,,,,1,0,Yes,services,,Yes,,,Yes
+1286420060,Mocktails,"Master Shake (Chocolate)",Chocolate,"master shake",variation,150.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286420061,Mocktails,"Master Shake (Butterscotch)",Butterscotch,"master shake",variation,150.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286420062,Mocktails,"Master Shake (Mango)",Mango,"master shake",variation,150.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286420063,Mocktails,"Master Shake (Strawberry)",Strawberry,"master shake",variation,150.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286420064,Mocktails,"Master Shake (Vanilla)",Vanilla,"master shake",variation,150.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286420120,Kulfis,"Mango Kulfi",,"mango kulfi",item,50.00,,veg,"mango kulfi",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286439963,Mocktails,"Anjeer Shake",,"anjeer shake",item,130.00,,veg,anjeer,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286440006,Rolls,"Only Chicken Roll",,"only chicken roll",item,110.00,,non-veg,ocr,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286440114,Snacks,"Extra Mayonnaise",,"extra mayonnaise",item,0,,veg,xmayo,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286440115,Snacks,"Extra Mayonnaise (Small)",Small,"extra mayonnaise",variation,30.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286440116,Snacks,"Extra Mayonnaise (Medium)",Medium,"extra mayonnaise",variation,50.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286440117,Snacks,"Extra Mayonnaise (Large)",Large,"extra mayonnaise",variation,60.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286516113,Snacks,"Extra Cheese",,"extra cheese",item,0,,veg,"extra cheese",,,,,1,0,Yes,services,,Yes,,,Yes
+1286516114,Snacks,"Extra Cheese (Small)",Small,"extra cheese",variation,60.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286516115,Snacks,"Extra Cheese (Large)",Large,"extra cheese",variation,100.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286700277,Burger,"Chicken Burger Buy 1 Get 1",,"chicken burger buy 1 + 1",item,190.00,,non-veg,"cb 1+1",,,,,1,0,Yes,services,,Yes,,,Yes
+1286700446,Burger,"Veg Cheese Burger Buy 1 Get 1",,"veg cheese burger buy 1 + 1",item,120.00,,veg,"vb 1+1",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1286700775,Burger,"Veg Burger 2+1",,"veg burger 2+1",item,260.00,,veg,"vb 2+1 Offer",,,,,1,0,Yes,services,,Yes,,,Yes
+1286700793,Burger,"Chicken Burger 2+1",,"chicken burger 2+1",item,370.00,,non-veg,"cb 2+1 Offer",,,,,1,0,Yes,services,,Yes,,,Yes
+1286701066,Sandwichs,"Chicken Sandwich 1+1",,"chicken sandwich 1+1",item,140.00,,non-veg,"cs 1+1",,,,,1,0,Yes,services,,Yes,,,Yes
+1286701074,Sandwichs,"Paneer Sandwich 1+1",,"paneer sandwich 1+1",item,140.00,,veg,"ps 1+1",,,,,1,0,Yes,services,,Yes,,,Yes
+1286748387,Mocktails,"Kit Kat Shake",,"kit kat shake",item,100.00,,veg,kks,,,,,1,0,Yes,services,,Yes,,,Yes
+1286916104,"Fresh Juice","Grape Pulpy",,"grape pulpy",item,60.00,,veg,gp,,,,,1,0,Yes,services,,Yes,,,Yes
+1286916113,"Fresh Juice","Pulpy Grape 2+1",,"pulpy grape 2+1",item,130.00,,veg,"pg 2+1",,,,,1,0,Yes,services,,Yes,,,Yes
+1286916809,"Fresh Juice","Grape Pulpy1",,"grape pulpy1",item,60.00,,veg,gp1,,,,,1,0,Yes,services,,Yes,,,Yes
+1286916827,"Fresh Juice","Grape Pulpy Buy 2 Get 1",,"grape pulpy buy 2 get 1",item,130.00,,veg,"gp 2+1",,,,,1,0,Yes,services,,Yes,,,Yes
+1286932516,Chocolate,"Dairy Milk 100",,"dairy milk 100",item,100.00,,veg,"dairy milk 100",,,,,1,0,Yes,services,,Yes,,,Yes
+1287005192,"Cold Drinks",Thumsup,,thumsup,item,0,,veg,thumsup,,,,,1,0,Yes,services,,Yes,,,Yes
+1287282795,"Cold Drinks","Thumsup (Small)",Small,thumsup,variation,20.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1287282796,"Cold Drinks","Thumsup (Regular)",Regular,thumsup,variation,50.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1287282797,"Cold Drinks","Thumsup (Large)",Large,thumsup,variation,100.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1287227064,"Fresh Juice","Grape Pulpy Full Pack",,,item,290.00,,veg,"gp pack",,"	",,,1,0,Yes,,,Yes,,,Yes
+1287712842,Rolls,"Shawarma Offer",,,item,150.00,,non-veg,1+1,,"	",,,1,0,Yes,,shawoffer,Yes,,,Yes
+1287895044,Sandwichs,"Corn Sandwich 1+1",,,item,120.00,,veg,"CCS 1+1",,,,,1,0,Yes,,,Yes,,,Yes
+1287929404,"Cold Drinks","Maaza 10",,,item,10.00,,veg,MZ,,"	",,,1,0,Yes,,,Yes,,,Yes
+1287931582,Burger,"Paneer Burger",,,item,140.00,,veg,pb,,"	",,,1,0,Yes,,,Yes,,,Yes
+1287931589,Burger,"Paneer Burger 1+1",,,item,170.00,,veg,"pb 1+1",,"	",,,1,0,Yes,,,Yes,,,Yes
+1287956117,"Cold Drinks",Monster,,,item,125.00,,veg,M125,,"	",,,1,0,Yes,,,Yes,,,Yes
+1288033212,Rolls,Khabus,,,item,10.00,,veg,kb10,,"	",,,1,0,Yes,,,Yes,,,Yes
+1288053484,Chocolate,"Dairy Milk 240",,,item,240.00,,veg,DM240,,"	",,,1,0,Yes,,,Yes,,,Yes
+1288081913,Chocolate,"Dm 45",,,item,45.00,,veg,"DM 45",,"	",,,1,0,Yes,,,Yes,,,Yes
+1288081939,Chocolate,"Dm 110",,,item,110.00,,veg,"DM 110",,"	",,,1,0,Yes,,,Yes,,,Yes
+1288383140,"Cold Drinks","Mountain Dew",,,item,0,,veg,MD,,"	",,,1,0,Yes,,,Yes,,,Yes
+1289545331,"Cold Drinks","Mountain Dew (Small)",Small,,variation,20.00,,veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1289545332,"Cold Drinks","Mountain Dew (Large)",Large,,variation,40.00,,veg,,,"	",,,1,0,Yes,,,Yes,,,Yes
+1288812636,"Cold Drinks","7 Up",,,item,20.00,,veg,7UP,,"	",,,1,0,Yes,,,Yes,,,Yes
+1288850087,Sandwichs,"Veg Cheese Sandwich 1+1",,,item,120.00,,veg,VGS,,,,,1,0,Yes,,,Yes,,,Yes
+1289368905,"Fried Chicken","Chicken Lolipop",,"chicken lolipop",item,0,,non-veg,"chicken lolipop",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1289368906,"Fried Chicken","Chicken Lolipop (4 Pieces)","4 Pieces","chicken lolipop",variation,190.00,,non-veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1289368907,"Fried Chicken","Chicken Lolipop (6 Pieces)","6 Pieces","chicken lolipop",variation,250.00,,non-veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1289368919,"Fried Chicken","Chicken Wings",,"chicken wings",item,0,,non-veg,"chicken wings",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1289368920,"Fried Chicken","Chicken Wings (4 Pieces)","4 Pieces","chicken wings",variation,170.00,,non-veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1289368921,"Fried Chicken","Chicken Wings (6 Pieces)","6 Pieces","chicken wings",variation,210.00,,non-veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1289368936,"Fried Chicken","Crispy Chicken Broast",,"crispy chicken broast",item,0,,non-veg,"crispy chicken broas",,"	",,,1,0,Yes,services,,Yes,,,Yes
+1289368937,"Fried Chicken","Crispy Chicken Broast (5 Pieces)","5 Pieces","crispy chicken broast",variation,290.00,,non-veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1289368938,"Fried Chicken","Crispy Chicken Broast (10 Pieces)","10 Pieces","crispy chicken broast",variation,530.00,,non-veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1289545279,"Cold Drinks",Sting,,,item,20.00,,veg,Sting,,"	",,,1,0,Yes,,,Yes,,,Yes
+1289545283,"Cold Drinks",Limca,,,item,20.00,,veg,Limca,,"	",,,1,0,Yes,,,Yes,,,Yes
+1289545473,"Cold Drinks",Redbull,,,item,125.00,,veg,RB,,"	",,,1,0,Yes,,,Yes,,,Yes
+1289602143,"Cold Drinks","Mango Slice",,"mango slice",item,0,,veg,"mango slice",,,,,1,0,Yes,services,,Yes,,,Yes
+1289602144,"Cold Drinks","Mango Slice (Small)",Small,"mango slice",variation,20.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1289602145,"Cold Drinks","Mango Slice (Regular)",Regular,"mango slice",variation,40.00,,veg,,,"	",,,1,0,Yes,services,,Yes,,,Yes
+1289653946,"Ice Creams","Family Pack 2 Ltr 340",,,item,340.00,,veg,"FP 340",,"	",,,1,0,Yes,,,Yes,,,Yes
+1289654504,Chocolate,"Silk Big 240",,,item,240.00,,veg,SDM,,"	",,,1,0,Yes,,,Yes,,,Yes
+1289654588,Chocolate,"Dairy Milk 60rs",,,item,60.00,,veg,DM6,,"	",,,1,0,Yes,,,Yes,,,Yes
+1289657049,"Cold Drinks",Sprite,,,item,20.00,,veg,"Sprite Small",,"	",,,1,0,Yes,,,Yes,,,Yes
+1289657616,"Cold Drinks","Sprite 1 Ltr",,,item,50.00,,veg,"Sprite 1 Ltr",,"	",,,1,0,Yes,,,Yes,,,Yes
+1290317149,"Ice Creams","Fp Vanila",,"fp vanila",item,199.00,,veg,"fp vanila",,,,,1,0,Yes,services,,Yes,,,Yes
+1290317165,"Ice Creams","Fp Butterscotch",,"fp butterscotch",item,225.00,,veg,"fp butterscotch",,,,,1,0,Yes,services,,Yes,,,Yes
+1290716149,"Cold Drinks","Pepsi Tin",,,item,70.00,,veg,"Pepsi tin",,"	",,,1,0,Yes,,,Yes,,,Yes
+1290839907,Chocolate,"Kitkat 55",,,item,55.00,,veg,Kk55,,"	",,,1,0,Yes,,,Yes,,,Yes
+1290844843,"Ice Creams","Amul Fp Ice  130",,,item,130.00,,veg,A130,,"	",,,1,0,Yes,,,Yes,,,Yes
+1290908778,Chocolate,"Dairy Milk 110",,,item,110.00,,veg,DM110,,"	",,,1,0,Yes,,,Yes,,,Yes
+1291389162,"Ice Creams","Amul Fp 115",,,item,115.00,,veg,Afp115,,"	",,,1,0,Yes,,,Yes,,,Yes
+1291389215,"Ice Creams","Amulfp 120",,,item,120.00,,veg,AFP120,,"	",,,1,0,Yes,,,Yes,,,Yes
+1291936764,"Ice Creams","Amul Fp 300",,,item,300.00,,veg,AP300,,"	",,,1,0,Yes,,,Yes,,,Yes
+1292017353,Snacks,"Extra Roti",,,item,10.00,,veg,ER,,"	",,,1,0,Yes,,,Yes,,,Yes
+1292496607,"Ice Creams","Ice 55",,,item,55.00,,veg,ice55,,"	",,,1,0,Yes,,,Yes,,,Yes
+1292527095,Chocolate,"Kinder Buns 45",,,item,45.00,,veg,"KB 45",,"	",,,1,0,Yes,,,Yes,,,Yes
+1292527454,Chocolate,"Kitkat 35",,,item,35.00,,veg,"Kk 35",,"	",,,1,0,Yes,,,Yes,,,Yes
+1292575902,"Ice Creams","Amultub 210",,,item,210.00,,veg,AM210,,"	",,,1,0,Yes,,,Yes,,,Yes
+1292768583,"Ice Creams",Fp200,,,item,200.00,,veg,FP200,,"	",,,1,0,Yes,,,Yes,,,Yes
+1292784822,"Ice Creams",Fp310,,,item,310.00,,veg,FP310,,"	",,,1,0,Yes,,,Yes,,,Yes
+1292956393,"Ice Creams",Tub230,,,item,230.00,,veg,Tub230,,"	",,,1,0,Yes,,,Yes,,,Yes
+1292989076,"Ice Creams",Fp145,,,item,145.00,,veg,FP145,,"	",,,1,0,Yes,,,Yes,,,Yes
+1293160448,"Ice Creams",Tub270,,,item,270.00,,veg,Tub270,,"	",,,1,0,Yes,,,Yes,,,Yes
+1293582049,"Ice Creams",Tub210,,,item,210.00,,veg,Tub210,,"	",,,1,0,Yes,,,Yes,,,Yes
+1294031072,"Ice Creams","Fp 105",,,item,105.00,,veg,FP105,,"	",,,1,0,Yes,,,Yes,,,Yes
+1294056966,"Cold Drinks","Energy Drink 60rs",,,item,60.00,,veg,ED60,,"	",,,1,0,Yes,,,Yes,,,Yes
+1294466754,"Ice Creams","Fp 180",,,item,180.00,,veg,"FP 180",,"	",,,1,0,Yes,,,Yes,,,Yes
+1295525348,Chocolate,"Dm 215 Rs",,,item,215.00,,veg,DM215,,"	",,,1,0,Yes,,,Yes,,,Yes
+1296822131,Chocolate,"Cads Dm 214",,,item,214.00,,veg,cdm214,,"	",,,1,0,Yes,,,Yes,,,Yes
+1298182764,Burger,"Veg Burger",,,item,90.00,,veg,VGB,,,,,1,0,Yes,,,Yes,,,Yes
+1298410877,Chocolate,"Extra Nutella",,,item,15.00,,veg,EN,,"	",,,1,0,Yes,,,Yes,,,Yes
+1298417316,Snacks,"Extra Sauce",,,item,30.00,,veg,"Loaded Sauce",,"	",,,1,0,Yes,,,Yes,,,Yes
+1298690715,Snacks,"Veg Momos",,,item,100.00,,veg,VGM,,"	",,,1,0,Yes,,,Yes,,,Yes
+1298693292,Snacks,"Chicken Momos",,,item,130.00,,non-veg,CKM,,"	",,,1,0,Yes,,,Yes,,,Yes
+1298751491,Snacks,"Veg Fried Momos",,,item,110.00,,veg,VFM,,"	",,,1,0,Yes,,,Yes,,,Yes
+1298752547,Snacks,"Chicken Fried Momos",,,item,140.00,,non-veg,CFM,,"	",,,1,0,Yes,,,Yes,,,Yes
+1298906189,"Fried Chicken","Chicken Loaded No Fries",,,item,180.00,,non-veg,CLNF,,"	",,,1,0,Yes,,,Yes,,,Yes
+1299171373,Chocolate,Dm50,,,item,50.00,,veg,DM50,,"	",,,1,0,Yes,,,Yes,,,Yes
+1300259638,"Ice Creams","Fp 135rs",,,item,135.00,,veg,FP135,,"	",,,1,0,Yes,,,Yes,,,Yes
+1300259859,"Ice Creams","Fp 170rs",,,item,170.00,,veg,FP170,,"	",,,1,0,Yes,,,Yes,,,Yes
+1300459675,Chocolate,"Dm 225rs",,,item,225.00,,veg,DM225,,"	",,,1,0,Yes,,,Yes,,,Yes
+1303206719,"Ice Creams","Fp 225",,,item,225.00,,veg,Fp225,,"	",,,1,0,Yes,,,Yes,,,Yes
+1303888220,"Ice Creams","Ice 125",,,item,125.00,,veg,I125,,"	",,,1,0,Yes,,,Yes,,,Yes
+1304541439,Burger,"3 Veg Burger + 1 Fries+ 3 Cd(s)",,,item,390.00,,veg,3vegburger,,"	",,,1,0,Yes,,,Yes,,,Yes
+1304541462,Burger,"3chkn Burger+1fries+3cd(s)",,,item,470.00,,non-veg,"chkn burger combo",,"	",,,1,0,Yes,,,Yes,,,Yes
+1304541651,Burger,"1 Veg Burger+1fries+1 Veg Sandwich +cd(s)",,,item,270.00,,veg,vbvs,,"	",,,1,0,Yes,,,Yes,,,Yes
+1304541680,Burger,"1chkn Burger + 1ckn Sandwich + 1fries + 1cd(s)",,,item,300.00,,non-veg,cbcs,,"	",,,1,0,Yes,,,Yes,,,Yes
+1304541711,Pizzas,"1veg Pizza(s)+1fries+1cd(s)",,,item,230.00,,veg,vpfd,,"	",,,1,0,Yes,,,Yes,,,Yes
+1304541827,Pizzas,"1margarita(s) +1fries + 1cd(s)",,,item,220.00,,veg,mfd,,"	",,,1,0,Yes,,,Yes,,,Yes
+1305235415,"Cold Drinks","Slice 70",,,item,70.00,,veg,Slice70,,"	",,,1,0,Yes,,,Yes,,,Yes
+1305235423,"Cold Drinks","Slice 95",,,item,95.00,,veg,S95,,"	",,,1,0,Yes,,,Yes,,,Yes
+1305899929,"Cold Drinks","Sting 30",,,item,30.00,,veg,St30,,"	",,,1,0,Yes,,,Yes,,,Yes
+1306529789,"Combo Offers","Ckn Sandwich + Fries + Cd (s)",,,item,190.00,,non-veg,csc,,"	",,,1,0,Yes,,,Yes,,,Yes
+1307406230,"Cold Drinks","Orange Pulpy",,,item,25.00,,veg,Orangep25,,,,,1,0,Yes,,,Yes,,,Yes
+1313716780,Rolls,"Only Chicken Plate Shawarma",,,item,170.00,,non-veg,OCPS,,,,,1,0,Yes,,,Yes,,,Yes
+1314040070,Specials,"Sckn Pizza1 Ckn Popcorn1 Fries2 Watermelon2",,,item,560.00,"Special 15th August Offer",non-veg,"15 Aug",,,,,1,0,Yes,,,Yes,,,Yes

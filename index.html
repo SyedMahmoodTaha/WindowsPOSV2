@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pfl</title>
+  </head>
+  <body>
+    <div id="startup-splash" aria-label="Loading Lassi Shop POS">
+      <div class="startup-mark">
+        <img src="./Logo.png" alt="Lassi Shop" onerror="this.style.display='none'" />
+        <span>Lassi Shop POS</span>
+      </div>
+    </div>
+    <div id="root"></div>
+    <style>
+      html,body,#root{margin:0;min-height:100%;background:#1f1f1f}
+      #startup-splash{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:#1f1f1f;color:#f5f5f5;transition:opacity .45s ease,visibility .45s ease}
+      #startup-splash.is-hidden{opacity:0;visibility:hidden;pointer-events:none}
+      .startup-mark{display:grid;justify-items:center;gap:16px;animation:startup-rise 1.1s cubic-bezier(.22,1,.36,1) both;font:600 20px Georgia,serif;letter-spacing:.04em}
+      .startup-mark img{width:88px;height:88px;border-radius:22px;box-shadow:0 14px 40px #0008;animation:startup-breathe 1.8s ease-in-out infinite}
+      @keyframes startup-rise{from{opacity:0;transform:translateY(12px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+      @keyframes startup-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
+      @media (prefers-reduced-motion:reduce){.startup-mark,.startup-mark img{animation:none}}
+    </style>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
