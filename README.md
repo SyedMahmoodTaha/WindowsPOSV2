@@ -66,3 +66,4 @@ npm run desktop
 Build the POS with `npm run dist` from the repository root. Build the viewer with `npm run dist` from `DB-Viewer/`. Outputs are written to each app's `release/` folder.
 
 Never commit `.env` files, account passwords, generated installers, or POS SQLite database files.
+# WindowsPOSV2
