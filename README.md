@@ -26,7 +26,7 @@ Add these six repository secrets under **Settings > Secrets and variables > Acti
 
 Push to `main` or `master`, or start **Windows Build** manually from the Actions tab. The workflow creates temporary `.env` files from those secrets and uploads two artifacts:
 
-- `lassi-shop-pos-windows` — POS NSIS installer and portable executable.
+- `lassi-shop-pos-windows` — portable POS executable only.
 - `lassi-shop-db-viewer-windows` — standalone DB Viewer installer (`.exe` only).
 
 To download the DB Viewer, open the completed **Windows Build** run in [GitHub Actions](https://github.com/SyedMahmoodTaha/WindowsPOSV2/actions/workflows/windows-build.yml), open that run's **Summary**, and select `lassi-shop-db-viewer-windows` under **Artifacts**. These are run artifacts, not files under the repository's **Releases** page; GitHub expires run artifacts after its retention period.
