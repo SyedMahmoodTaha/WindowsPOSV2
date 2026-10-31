@@ -16,14 +16,6 @@ const readCustomerNotes = () => {
     }
 };
 
-const getCurrentUserRole = () => {
-    try {
-        return JSON.parse(sessionStorage.getItem("pfl-auth-user"))?.role;
-    } catch {
-        return undefined;
-    }
-};
-
 const getBrowserCustomers = () => {
     const notes = readCustomerNotes();
     const customers = new Map();
@@ -86,6 +78,14 @@ const getBrowserCustomers = () => {
             };
         })
         .sort((left, right) => new Date(right.lastOrderAt || 0) - new Date(left.lastOrderAt || 0));
+};
+
+const getCurrentUserRole = () => {
+    try {
+        return JSON.parse(sessionStorage.getItem("pfl-auth-user"))?.role;
+    } catch {
+        return undefined;
+    }
 };
 
 export const getCustomers = async () => window.pflDesktop?.getCustomers

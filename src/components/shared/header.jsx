@@ -47,7 +47,7 @@ const Header = () => {
             { label: "Tables", path: "/Tables", section: "Navigate" },
             { label: "Orders", path: "/Orders", section: "Navigate" },
             { label: "Printer Settings", path: "/settings", section: "Settings" },
-            { label: "Network Sync", path: "/settings", section: "Settings" },
+            ...(user?.role === "Admin" ? [{ label: "Network Sync", path: "/network-sync", section: "Settings" }] : []),
             { label: "Bill Printing Preferences", path: "/bill-printing-preferences", section: "Settings" },
             ...(["Admin", "Manager", "Assistant Manager"].includes(user?.role) ? [
                 { label: "Developer Mode", path: "/developer", section: "Navigate" },

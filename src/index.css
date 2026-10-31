@@ -127,6 +127,23 @@ body.theme-light .note-modal textarea,
 body.theme-light .variation-modal { background: #fffdf9 !important; color: #242321 !important; border-color: #d3cabc !important; }
 body.theme-light .hold-modal textarea::placeholder,
 body.theme-light .note-modal textarea::placeholder { color: #938b80 !important; }
+body.theme-light .order-details-panel,
+body.theme-light .order-details-panel:hover { background: #fffdf9 !important; color: #242321 !important; }
+body.theme-light .order-details-panel label,
+body.theme-light .order-details-panel h2,
+body.theme-light .order-details-panel [aria-live="polite"] { color: #4b4842 !important; }
+body.theme-light .order-details-field,
+body.theme-light .customer-page textarea { background: #fffdf9 !important; color: #242321 !important; border-color: #c9c0b3 !important; }
+body.theme-light .order-details-field::placeholder,
+body.theme-light .customer-page textarea::placeholder { color: #746d63 !important; opacity: 1; }
+body.theme-light .customer-page .customer-panel { background: #fffdf9 !important; color: #242321 !important; }
+body.theme-light .customer-page .customer-panel :is(h1, h2, h3, p, span, a, li, label) { color: #4b4842; }
+body.theme-light .customer-page .customer-panel :is(input, textarea) { color: #242321 !important; }
+body.theme-light .customer-page .customer-panel :is(article, button) { background: #f5f1e9 !important; color: #242321 !important; }
+body.theme-light .customer-page .customer-panel article { background: #f5f1e9 !important; }
+body.theme-light .customer-page .customer-panel input::placeholder,
+body.theme-light .customer-page .customer-panel textarea::placeholder { color: #746d63 !important; opacity: 1; }
+body.theme-light .customer-page .customer-panel button:hover { background-color: #e7dfd1 !important; color: #242321 !important; }
 body.theme-light .variation-modal { box-shadow: 0 20px 50px rgba(36, 35, 33, 0.12) !important; }
 body.theme-light .variation-option { background: #f5f1e9 !important; color: #242321 !important; border: 1px solid #d3cabc !important; }
 body.theme-light .variation-option:hover { background: #ddd6ca !important; color: #1a1a1a !important; }

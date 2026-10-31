@@ -5,6 +5,7 @@ import { pushOrdersToHost } from "./networkSync";
 export const ORDERS_STORAGE_KEY = "pfl-orders-v2";
 const LEGACY_ORDERS_STORAGE_KEY = "pfl-orders";
 const BILL_SEQUENCE_STORAGE_KEY = "pfl-bill-sequence-v2";
+const TOKEN_SEQUENCE_STORAGE_KEY = "pfl-token-sequence-v1";
 
 const WEB_PRINTER_SETTINGS_KEY = "pfl-printer-settings-v1";
 const WEB_SYNC_SETTINGS_KEY = "pfl-sync-settings-v1";
@@ -110,6 +111,19 @@ export const getNextBillNumber = () => {
     return String(nextNumber).padStart(3, "0");
 };
 
+export const getNextTokenNumber = () => {
+    const businessDate = getBusinessDate();
+    let sequence = { date: businessDate, number: 0 };
+    try {
+        sequence = JSON.parse(localStorage.getItem(TOKEN_SEQUENCE_STORAGE_KEY)) || sequence;
+    } catch (error) {
+        console.error("Could not read token number sequence:", error);
+    }
+    const nextNumber = sequence.date === businessDate ? sequence.number + 1 : 1;
+    localStorage.setItem(TOKEN_SEQUENCE_STORAGE_KEY, JSON.stringify({ date: businessDate, number: nextNumber }));
+    return String(nextNumber);
+};
+
 export const readOrders = () => {
     localStorage.removeItem(LEGACY_ORDERS_STORAGE_KEY);
     try {
@@ -193,6 +207,7 @@ export const removeOrder = (orderId) => {
 export const resetOrderData = () => {
     localStorage.removeItem(ORDERS_STORAGE_KEY);
     localStorage.removeItem(BILL_SEQUENCE_STORAGE_KEY);
+    localStorage.removeItem(TOKEN_SEQUENCE_STORAGE_KEY);
     if (window.pflDesktop && window.pflDesktop.saveOrders) {
         void persistOrdersToDb([]);
     }
@@ -202,6 +217,7 @@ export const resetOrderData = () => {
 
 export const resetBillSequence = () => {
     localStorage.removeItem(BILL_SEQUENCE_STORAGE_KEY);
+    localStorage.removeItem(TOKEN_SEQUENCE_STORAGE_KEY);
     window.dispatchEvent(new Event("pfl-orders-updated"));
 };
 
@@ -214,6 +230,17 @@ const escapeHtml = (value) => String(value ?? "")
 
 export const renderReceiptHtml = (order, destination, configuredOptions = {}) => {
     const template = configuredOptions?.fields ? configuredOptions : defaultBillTemplates[0];
+    if (order.transferInfo) {
+        const paperWidth = template.paperWidth === 58 ? 58 : 80;
+        const { fromTable, toTable } = order.transferInfo;
+        return `<!doctype html><html><head><meta charset="utf-8"><style>
+            @page { size: ${paperWidth}mm auto; margin: 0; }
+            body { width: ${paperWidth}mm; margin: 0; padding: 5mm; box-sizing: border-box; font: 700 14px Verdana, Arial, sans-serif; color: #000; text-align: center; }
+            h1 { margin: 0 0 8px; font-size: 17px; }
+            p { margin: 5px 0; overflow-wrap: anywhere; }
+            .divider { border-top: 1px dashed #000; margin: 8px 0; }
+        </style></head><body><h1>TABLE TRANSFER</h1><p>Bill: ${escapeHtml(order.orderNumber || "-")}</p><div class="divider"></div><p>FROM<br><strong>${escapeHtml(fromTable)}</strong></p><p>TO<br><strong>${escapeHtml(toTable)}</strong></p></body></html>`;
+    }
     const options = { ...defaultReceiptOptions, ...(template.fields || configuredOptions) };
     const labels = { ...DEFAULT_FIELD_LABELS, ...(template.fieldLabels || {}) };
     const isKitchenPrint = destination === "kitchen";
@@ -239,7 +266,90 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
     const items = order.cart.map((item) => `
         <tr><td class="${isKotLayout ? "kot-item-name" : ""}">${escapeHtml(item.name).replaceAll("\n", "<br>")}${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}</td><td>${item.quantity}</td>${options.itemPrice ? `<td>₹${Math.round(item.price * item.quantity)}</td>` : ""}</tr>
     `).join("");
-    const logoSrc = new URL(`${import.meta.env.BASE_URL}Logo.png`, window.location.href).href;
+    const logoSrc = template.logoDataUrl || new URL(`${import.meta.env.BASE_URL}Logo.png`, window.location.href).href;
+    const footerLines = [
+        template.footerText,
+        template.fssaiText,
+        template.footerPhone ? `Phone: ${template.footerPhone}` : "",
+        template.gstNumber ? `GST: ${template.gstNumber}` : "",
+    ].map((line) => String(line || "").trim()).filter(Boolean);
+    const paperWidth = template.paperWidth === 58 ? 58 : 80;
+    if (template.layout === "lassi-shop" && destination !== "kitchen") {
+        const orderItems = Array.isArray(order.cart) ? order.cart : [];
+        const totalQuantity = orderItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+        const itemSubtotal = orderItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
+        const receiptDateTime = Number.isNaN(createdAt.getTime())
+            ? ""
+            : `${String(createdAt.getDate()).padStart(2, "0")}/${String(createdAt.getMonth() + 1).padStart(2, "0")}/${String(createdAt.getFullYear()).slice(-2)} ${String(createdAt.getHours()).padStart(2, "0")}:${String(createdAt.getMinutes()).padStart(2, "0")}`;
+        const receiptType = order.orderType === "Table"
+            ? "Dine In"
+            : order.orderType === "Takeaway"
+                ? "Take Away"
+                : order.orderType || "Walk-in";
+        const itemRows = orderItems.map((item) => {
+            const quantity = Number(item.quantity || 0);
+            const price = Number(item.price || 0);
+            return `<tr><td class="item-name">${escapeHtml(item.name || "")}${item.note ? `<small>${escapeHtml(item.note)}</small>` : ""}</td><td class="numeric">${quantity}</td><td class="numeric">${price.toFixed(2)}</td><td class="numeric">${(price * quantity).toFixed(2)}</td></tr>`;
+        }).join("");
+        const logoMarkup = options.logo
+            ? `<div class="logo"><img src="${escapeHtml(logoSrc)}" alt="Lassi Shop logo"></div>`
+            : "";
+        const customerMarkup = options.customerName || options.phone || options.address
+            ? `<div class="customer-block">${options.customerName ? `<div><span>Name:</span> ${escapeHtml(customerName || "Walk-in")}${options.phone && phone ? ` <span>(M: ${escapeHtml(phone)})</span>` : ""}</div>` : ""}${options.address && address ? `<div><span>Addr:</span> ${escapeHtml(address)}</div>` : ""}</div>`
+            : "";
+        const dateTypeMarkup = options.dateTime || options.billType
+            ? `<div class="meta-row">${options.dateTime ? `<span>Date: ${escapeHtml(receiptDateTime)}</span>` : "<span></span>"}${options.billType ? `<strong>${escapeHtml(receiptType)}</strong>` : ""}</div>`
+            : "";
+        const cashierBillMarkup = options.cashierName || options.billNumber
+            ? `<div class="meta-row">${options.cashierName ? `<span>Cashier: ${escapeHtml(cashierName)}</span>` : "<span></span>"}${options.billNumber ? `<span>Bill No.: ${escapeHtml(order.orderNumber || "-")}</span>` : ""}</div>`
+            : "";
+        const deliveryMarkup = options.deliveryCharges && deliveryCharge > 0
+            ? `<div class="total-row"><span>Delivery Charge</span><span>${deliveryCharge.toFixed(2)}</span></div>`
+            : "";
+        const parcelMarkup = options.parcelCharges && parcelCharge > 0
+            ? `<div class="total-row"><span>Parcel Charge</span><span>${parcelCharge.toFixed(2)}</span></div>`
+            : "";
+        const discountMarkup = options.discount && discount > 0
+            ? `<div class="total-row"><span>Discount</span><span>-${discount.toFixed(2)}</span></div>`
+            : "";
+        const totalsMarkup = options.subtotal || options.deliveryCharges || options.parcelCharges || options.discount || options.total
+            ? `<div class="totals">${options.subtotal ? `<div class="total-row"><span>Total Qty: ${totalQuantity}</span><span>Sub Total&nbsp; ${itemSubtotal.toFixed(2)}</span></div>` : ""}${deliveryMarkup}${parcelMarkup}${discountMarkup}${options.total ? `<div class="grand-total"><span>Grand Total</span><strong>₹${Number(order.total || 0).toFixed(2)}</strong></div>` : ""}</div>`
+            : "";
+        const footerMarkup = options.footer
+            ? `<footer>${footerLines.map((line) => `<div>${escapeHtml(line)}</div>`).join("")}</footer>`
+            : "";
+
+        return `<!doctype html><html><head><meta charset="utf-8"><title>Cashier Bill ${escapeHtml(order.orderNumber || "")}</title><style>
+            @page { size: ${paperWidth}mm auto; margin: 0; }
+            * { box-sizing: border-box; }
+            html, body { width: ${paperWidth}mm; max-width: ${paperWidth}mm; margin: 0; padding: 0; }
+            body { padding: 3mm 5mm; color: #000; font: 700 11px/1.2 Arial, Verdana, sans-serif; overflow-wrap: anywhere; }
+            .logo { display: flex; justify-content: center; align-items: center; margin: 0 auto 2mm; }
+            .logo img { display: block; width: auto; max-width: 68%; max-height: 27mm; object-fit: contain; }
+            .header-phone { margin: 0 0 3mm; text-align: center; font-size: 13px; font-weight: 700; }
+            .customer-block { border-top: 1px solid #777; border-bottom: 1px solid #777; padding: 2mm 1mm; }
+            .customer-block div { margin: 0.5mm 0; }
+            .customer-block div + div { border-top: 1px solid #aaa; padding-top: 1mm; }
+            .customer-block span { font-weight: 400; }
+            .meta-row { display: flex; justify-content: space-between; gap: 2mm; padding: 1mm 0; }
+            .meta-row > * { min-width: 0; }
+            .meta-row strong { text-align: right; }
+            .items { width: 100%; margin-top: 1mm; border-collapse: collapse; table-layout: fixed; }
+            .items th, .items td { min-width: 0; padding: 1mm 0.5mm; text-align: left; vertical-align: top; }
+            .items th { border-bottom: 1px solid #777; white-space: nowrap; }
+            .items .item-name { width: 43%; overflow-wrap: anywhere; }
+            .items .numeric { text-align: right; white-space: nowrap; }
+            .items th:nth-child(2) { width: 11%; }
+            .items th:nth-child(3) { width: 19%; }
+            .items th:nth-child(4) { width: 27%; }
+            .items small { display: block; font-size: 9px; font-weight: 400; }
+            .totals { margin-top: 1mm; border-top: 1px solid #777; padding-top: 1mm; }
+            .total-row { display: flex; justify-content: space-between; gap: 2mm; padding: 0.7mm 0; }
+            .grand-total { display: flex; justify-content: space-between; gap: 2mm; border-top: 1px solid #777; margin-top: 1mm; padding: 1.5mm 0; font-size: 13px; }
+            footer { margin-top: 2mm; text-align: center; font-size: 9px; line-height: 1.3; }
+            @media print { body { margin: 0; } }
+        </style></head><body>${logoMarkup}${options.businessName ? `<div class="header-phone">${escapeHtml(template.headerPhoneNumber || "9611648843")}</div>` : ""}${customerMarkup}${dateTypeMarkup}${cashierBillMarkup}${options.items ? `<table class="items"><thead><tr><th>Item</th><th class="numeric">Qty.</th><th class="numeric">Price</th><th class="numeric">Amount</th></tr></thead><tbody>${itemRows}</tbody></table>` : ""}${totalsMarkup}${footerMarkup}</body></html>`;
+    }
     const fieldMarkup = {
         items: `<table><thead><tr><th>${escapeHtml(labels.item)}</th><th>${escapeHtml(labels.quantity)}</th>${options.itemPrice ? `<th>${escapeHtml(labels.itemPrice)}</th>` : ""}</tr></thead><tbody>${items}</tbody></table>`,
         businessName: isKotLayout ? `<div class="kot-meta-row"><span>${escapeHtml(labels.businessName)}:</span><strong>${escapeHtml(template.businessName || "Lassi Shop")}</strong></div>` : "",
@@ -267,7 +377,7 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         discount: discount > 0 ? `<p class="row"><span>${escapeHtml(labels.discount)}</span><span>-₹${Math.round(discount)}</span></p>` : "",
         note: order.orderNote ? `<p class="${isKotLayout ? "kot-notes" : "note"}">${escapeHtml(labels.note)}: ${escapeHtml(order.orderNote)}</p>` : "",
         total: `<p class="total">${escapeHtml(labels.total)}: ₹${Math.round(order.total)}</p>`,
-        footer: `<p class="footer">${escapeHtml(template.footerText || "Thank you for visiting us")}</p>`,
+        footer: `<p class="footer">${footerLines.map(escapeHtml).join("<br>")}</p>`,
     };
     (template.dividers || []).forEach((divider) => {
         fieldMarkup[`divider:${divider.id}`] = `<div class="divider">${escapeHtml(divider.label || "")}</div>`;
@@ -276,7 +386,6 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
     const orderedFields = fieldOrder.filter((field) => (field.startsWith("divider:") || (field === "businessName" && isKotLayout) || options[field]) && fieldMarkup[field]);
     const bodyMarkup = orderedFields.map((field) => fieldMarkup[field]).join("");
 
-    const paperWidth = template.paperWidth === 58 ? 58 : 80;
     const alignment = template.alignment || "center";
     const horizontalPaddingMm = Math.min(8, Math.max(0, Number(template.horizontalPaddingMm ?? 3)));
     const kotBottomFeedLines = isKotLayout ? Math.min(20, Math.max(0, Number(template.kotBottomFeedLines ?? 0))) : 0;
@@ -306,7 +415,7 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         body {
           font: 700 ${fontSize}px/${lineHeight} ${fontFamily};
           color: #000000;
-          padding: ${contentPadding}px ${isKotLayout ? `${horizontalPaddingMm}mm` : `${contentPadding}px`} ${isKotLayout ? `calc(${contentPadding}px + ${kotBottomFeedLines * fontSize * lineHeight}px)` : `${contentPadding}px`};
+          padding: ${contentPadding}px ${isKotLayout ? `${horizontalPaddingMm}mm` : "5mm"} ${isKotLayout ? `calc(${contentPadding}px + ${kotBottomFeedLines * fontSize * lineHeight}px)` : `${contentPadding}px`};
           box-sizing: border-box;
           word-break: break-word;
           overflow-wrap: anywhere;
@@ -314,10 +423,10 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
-        .header { display: flex; align-items: center; justify-content: ${alignment === "left" ? "flex-start" : alignment === "right" ? "flex-end" : "center"}; gap: 8px; margin-bottom: 8px; }
-        .logo-box { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; }
-        .logo-box img { width: 100%; height: 100%; object-fit: contain; }
-        .brand { font-size: ${businessNameSize}px; font-weight: 700; text-align: ${alignment}; color: #000; }
+        .header { display: flex; flex-direction: column; align-items: ${alignment === "left" ? "flex-start" : alignment === "right" ? "flex-end" : "center"}; justify-content: ${alignment === "left" ? "flex-start" : alignment === "right" ? "flex-end" : "center"}; gap: 4px; margin-bottom: 8px; }
+        .logo-box { width: 100%; max-height: 100px; display: flex; align-items: center; justify-content: center; }
+        .logo-box img { display: block; max-width: 100%; max-height: 100px; object-fit: contain; }
+        .brand { min-width: 0; max-width: 100%; font-size: ${businessNameSize}px; font-weight: 700; text-align: ${alignment}; color: #000; overflow-wrap: anywhere; }
         .kot-item-name { font-weight: 700; }
         .kot-centered { justify-content: center; text-align: center; }
         .kot-centered span, .kot-centered strong { flex: initial; }
@@ -339,26 +448,26 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         .kot-layout .kot-notes { margin: 4px 0 0; font-weight: 700; overflow-wrap: anywhere; }
         .kot-notes { margin: 4px 0; font-weight: 700; }
         .header-line { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 6px 0; margin: 6px 0; }
-        h1 { text-align: ${alignment}; font-size: ${titleSize}px; margin: 0; color: #000; }
+        h1 { max-width: 100%; text-align: ${alignment}; font-size: ${titleSize}px; margin: 0; color: #000; overflow-wrap: anywhere; }
         p { margin: 4px 0; color: #000; }
-        .row { display: flex; justify-content: space-between; gap: 8px; font-size: ${fontSize}px; color: #000; font-weight: 700; margin: ${rowSpacing}px 0; }
+        .row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; min-width: 0; font-size: ${fontSize}px; color: #000; font-weight: 700; margin: ${rowSpacing}px 0; }
         .meta-box { margin: ${rowSpacing}px 0; }
-        .meta-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin: ${rowSpacing}px 0; font-size: ${fontSize}px; color: #000; }
-        .meta-row span { color: #000; min-width: 0; font-weight: 700; }
-        .meta-row strong { text-align: right; flex: 1; font-weight: 700; word-break: break-word; color: #000; }
+        .meta-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 2px 8px; min-width: 0; margin: ${rowSpacing}px 0; font-size: ${fontSize}px; color: #000; }
+        .meta-row span { color: #000; min-width: 0; max-width: 100%; font-weight: 700; overflow-wrap: anywhere; }
+        .meta-row strong { text-align: right; flex: 1 1 auto; min-width: 0; max-width: 100%; font-weight: 700; word-break: break-word; overflow-wrap: anywhere; color: #000; }
         table { border-collapse: collapse; width: 100%; margin-top: ${rowSpacing}px; table-layout: fixed; font-size: ${Math.max(fontSize - 1, 9)}px; color: #000; }
-        th, td { padding: ${cellPadding}px 0; text-align: left; border-bottom: 1px ${dividerStyle} #000; vertical-align: top; color: #000; font-weight: 700; }
+        th, td { min-width: 0; padding: ${cellPadding}px 0; text-align: left; border-bottom: 1px ${dividerStyle} #000; vertical-align: top; color: #000; font-weight: 700; overflow-wrap: anywhere; }
         th:nth-child(1), td:nth-child(1) { width: ${itemNameWidth}%; overflow-wrap: anywhere; }
         th:nth-child(2), td:nth-child(2) { width: ${quantityWidth}%; text-align: center; }
         th:nth-child(3), td:nth-child(3) { width: ${amountWidth}%; text-align: right; }
         small { display: block; margin-top: 2px; color: #000; font-size: 10.5px; line-height: 1.3; font-weight: 700; }
         .total { font-weight: ${template.boldTotal === false ? 400 : 700}; text-align: right; margin-top: 12px; font-size: ${totalSize}px; color: #000; }
-        .note { margin-top: 12px; border-top: 1px dashed #000; padding-top: 8px; font-size: 11.5px; color: #000; font-weight: 700; }
-        .divider { display: flex; align-items: center; gap: 6px; margin: 10px 0; color: #000; font-size: 10.5px; text-align: center; font-weight: 700; }
+        .note { max-width: 100%; margin-top: 12px; border-top: 1px dashed #000; padding-top: 8px; font-size: ${Math.max(fontSize - 1, 10)}px; color: #000; font-weight: 700; overflow-wrap: anywhere; }
+        .divider { display: flex; align-items: center; gap: 6px; max-width: 100%; margin: 10px 0; color: #000; font-size: ${Math.max(fontSize - 2, 10)}px; text-align: center; font-weight: 700; overflow-wrap: anywhere; }
         .divider::before, .divider::after { content: ""; flex: 1; border-top: 1px ${dividerStyle} #000; }
-        .footer { text-align: center; margin-top: 12px; font-size: 11px; color: #000; font-weight: 700; }
+        .footer { max-width: 100%; text-align: center; margin-top: 12px; font-size: ${Math.max(fontSize - 2, 10)}px; color: #000; font-weight: 700; overflow-wrap: anywhere; }
         @media print { body { margin: 0; } }
-    </style></head><body class="${isKotLayout ? "kot-layout" : ""}">${!isKotLayout && (options.logo || options.businessName) ? `<div class="header">${options.logo ? `<div class="logo-box"><img src="${logoSrc}" alt="Logo" /></div>` : ""}${options.businessName ? `<div class="brand">${escapeHtml(template.businessName || "Lassi Shop")}</div>` : ""}</div>` : ""}${!isKotLayout && template.headerText ? `<p class="footer">${escapeHtml(template.headerText)}</p>` : ""}${title ? `<div class="header-line"><h1>${title}</h1></div>` : ""}<div class="meta-box">${bodyMarkup}</div></body></html>`;
+    </style></head><body class="${isKotLayout ? "kot-layout" : ""}">${!isKotLayout && (options.logo || options.businessName) ? `<div class="header">${options.logo ? `<div class="logo-box"><img src="${escapeHtml(logoSrc)}" alt="Logo" /></div>` : ""}${options.businessName ? `<div class="brand">${escapeHtml(template.headerPhoneNumber || template.businessName || "Lassi Shop")}</div>` : ""}</div>` : ""}${!isKotLayout && template.headerText ? `<p class="footer">${escapeHtml(template.headerText)}</p>` : ""}${title ? `<div class="header-line"><h1>${title}</h1></div>` : ""}<div class="meta-box">${bodyMarkup}</div></body></html>`;
 };
 
 const printSingleOrder = async (order, destination, selectedTemplate) => {
@@ -409,5 +518,12 @@ export const printOrder = async (order, destination) => {
         return false;
     }
 };
+
+export const printTableTransfer = (order, fromTable, toTable) => printOrder({
+    ...order,
+    transferInfo: { fromTable, toTable },
+    cart: [],
+    orderType: "Table",
+}, "kitchen");
 
 export const isDesktop = () => Boolean(window.pflDesktop);

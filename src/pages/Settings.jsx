@@ -1,24 +1,18 @@
 import { useEffect, useState } from "react";
 import { FaArrowLeft, FaPrint, FaReceipt } from "react-icons/fa6";
 import { Link } from "react-router-dom";
-import { getCurrentUser } from "../utils/auth";
-import { readWebPrinterSettings, readWebSyncSettings, saveWebPrinterSettings } from "../utils/orderStorage";
-import { setSyncSettings as persistSyncSettings } from "../utils/networkSync";
+import { readWebPrinterSettings, saveWebPrinterSettings } from "../utils/orderStorage";
 
 const Settings = () => {
-    const currentUser = getCurrentUser();
-    const isAdmin = currentUser?.role === "Admin";
     const [printers, setPrinters] = useState([]);
     const [settings, setSettings] = useState({ kitchen: "", cashier: "" });
-    const [syncSettings, setSyncSettings] = useState({ enabled: false, mode: "host", host: "", port: 4099 });
     const [message, setMessage] = useState("");
-    const [syncMessage, setSyncMessage] = useState("");
 
     useEffect(() => {
         const loadSettings = async () => {
             if (window.pflDesktop) {
                 try {
-                    const [availablePrinters, savedSettings, savedSyncSettings] = await Promise.all([window.pflDesktop.getPrinters(), window.pflDesktop.getPrinterSettings(), window.pflDesktop.getSyncSettings()]);
+                    const [availablePrinters, savedSettings] = await Promise.all([window.pflDesktop.getPrinters(), window.pflDesktop.getPrinterSettings()]);
                     setPrinters(availablePrinters);
                     setSettings(Object.fromEntries(["kitchen", "cashier"].map((destination) => {
                         const value = savedSettings?.[destination];
@@ -26,12 +20,6 @@ const Settings = () => {
                         if (typeof value === "string" && /^\d{1,3}(?:\.\d{1,3}){3}$/.test(value.trim())) return [destination, { type: "ip", host: value.trim(), port: 9100 }];
                         return [destination, value || ""];
                     })));
-                    setSyncSettings({
-                        enabled: Boolean(savedSyncSettings?.enabled),
-                        mode: savedSyncSettings?.mode === "client" ? "client" : "host",
-                        host: savedSyncSettings?.host || "",
-                        port: Number(savedSyncSettings?.port || 4099),
-                    });
                     return;
                 } catch {
                     setMessage("Could not load installed printers");
@@ -46,7 +34,6 @@ const Settings = () => {
                 if (typeof value === "string" && /^\d{1,3}(?:\.\d{1,3}){3}$/.test(value.trim())) return [destination, { type: "ip", host: value.trim(), port: 9100 }];
                 return [destination, value || ""];
             })));
-            setSyncSettings(readWebSyncSettings());
         };
 
         void loadSettings();
@@ -62,19 +49,6 @@ const Settings = () => {
         setMessage("Printer settings saved");
     };
 
-    const saveSyncSettings = async (event) => {
-        event.preventDefault();
-        const next = {
-            enabled: Boolean(syncSettings.enabled),
-            mode: syncSettings.mode === "client" ? "client" : "host",
-            host: String(syncSettings.host || "").trim(),
-            port: Number(syncSettings.port || 4099),
-        };
-        const savedSettings = await persistSyncSettings(next);
-        setSyncSettings(savedSettings);
-        setSyncMessage(next.enabled ? (next.mode === "host" ? "Master sync enabled on this machine." : `Client mode connected to ${next.host || "master host"}:${next.port}`) : "Sync disabled");
-    };
-
     return (
         <main className="min-h-screen bg-[#1f1f1f] px-4 py-6 text-[#f5f5f5] sm:px-6">
             <div className="mx-auto max-w-2xl">
@@ -86,59 +60,6 @@ const Settings = () => {
                     <div className="mt-6 flex flex-col gap-3 sm:flex-row"><button type="submit" className="rounded-[12px] bg-[#d3d3d3] px-5 py-3 font-semibold text-[#1a1a1a] hover:bg-white">Save printer settings</button></div>
                     {message && <p className="mt-4 text-sm text-[#a7d7a7]">{message}</p>}
                 </form>
-
-                {isAdmin && (
-                    <form onSubmit={saveSyncSettings} className="mt-8 rounded-[24px] bg-[#2a2a2a] p-6 shadow-lg">
-                        <div className="mb-4 flex items-center justify-between gap-3">
-                            <div>
-                                <p className="text-sm uppercase tracking-[0.2em] text-[#ababab]">Network sync</p>
-                                <h2 className="text-2xl font-semibold">Master / Client mode</h2>
-                            </div>
-                            <label className="inline-flex items-center gap-2 text-sm text-[#ababab]">
-                                <input type="checkbox" checked={syncSettings.enabled} onChange={(event) => setSyncSettings((current) => ({ ...current, enabled: event.target.checked }))} className="h-4 w-4 accent-[#d3d3d3]" />
-                                Enabled
-                            </label>
-                        </div>
-
-                        <div className="mb-4 grid gap-3 sm:grid-cols-2">
-                            <label className="rounded-[14px] border border-[#444] bg-[#1f1f1f] p-3 text-sm text-[#f5f5f5]">
-                                <input type="radio" name="sync-mode" checked={syncSettings.mode === "host"} onChange={() => setSyncSettings((current) => ({ ...current, mode: "host" }))} className="mr-2 accent-[#d3d3d3]" />
-                                Host (master server)
-                            </label>
-                            <label className="rounded-[14px] border border-[#444] bg-[#1f1f1f] p-3 text-sm text-[#f5f5f5]">
-                                <input type="radio" name="sync-mode" checked={syncSettings.mode === "client"} onChange={() => setSyncSettings((current) => ({ ...current, mode: "client" }))} className="mr-2 accent-[#d3d3d3]" />
-                                Client
-                            </label>
-                        </div>
-
-                        {syncSettings.mode === "client" && (
-                            <div className="grid gap-3 sm:grid-cols-[1fr_7rem]">
-                                <input
-                                    type="text"
-                                    value={syncSettings.host}
-                                    onChange={(event) => setSyncSettings((current) => ({ ...current, host: event.target.value }))}
-                                    placeholder="192.168.1.20"
-                                    className="rounded-[12px] border border-[#444] bg-[#1f1f1f] px-3 py-3 text-[#f5f5f5] outline-none placeholder:text-[#777] focus:border-[#d3d3d3]"
-                                />
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="65535"
-                                    value={syncSettings.port}
-                                    onChange={(event) => setSyncSettings((current) => ({ ...current, port: Number(event.target.value || 4099) }))}
-                                    className="rounded-[12px] border border-[#444] bg-[#1f1f1f] px-3 py-3 text-[#f5f5f5] outline-none focus:border-[#d3d3d3]"
-                                />
-                            </div>
-                        )}
-
-                        {syncSettings.mode === "host" && (
-                            <p className="mt-3 text-sm text-[#ababab]">This machine will act as the master sync host and push updates to clients on the same LAN.</p>
-                        )}
-
-                        <button type="submit" className="mt-5 rounded-[12px] bg-[#d3d3d3] px-5 py-3 font-semibold text-[#1a1a1a] hover:bg-white">Save sync settings</button>
-                        {syncMessage && <p className="mt-4 text-sm text-[#a7d7a7]">{syncMessage}</p>}
-                    </form>
-                )}
             </div>
         </main>
     );

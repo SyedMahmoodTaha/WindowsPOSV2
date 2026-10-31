@@ -6,10 +6,11 @@ import { readOrders } from "../utils/orderStorage";
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+const getLocalDateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
 const getDayKey = (dateString) => {
     const date = new Date(dateString);
-    const utc = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    return utc.toISOString().slice(0, 10);
+    return Number.isNaN(date.getTime()) ? "" : getLocalDateKey(date);
 };
 
 const getMonthKey = (dateString) => {
@@ -22,6 +23,39 @@ const getYearKey = (dateString) => {
     return String(date.getFullYear());
 };
 
+const getWeekStart = (date) => {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+    return start;
+};
+
+const getPeriodRange = (period, referenceDate) => {
+    const start = new Date(referenceDate);
+    start.setHours(0, 0, 0, 0);
+    if (period === "daily" || period === "date") {
+        const end = new Date(start);
+        end.setDate(end.getDate() + 1);
+        return { start, end };
+    }
+    if (period === "weekly") {
+        const weekStart = getWeekStart(start);
+        const end = new Date(weekStart);
+        end.setDate(end.getDate() + 7);
+        return { start: weekStart, end };
+    }
+    if (period === "monthly") {
+        start.setDate(1);
+        const end = new Date(start);
+        end.setMonth(end.getMonth() + 1);
+        return { start, end };
+    }
+    start.setMonth(0, 1);
+    const end = new Date(start);
+    end.setFullYear(end.getFullYear() + 1);
+    return { start, end };
+};
+
 const buildDailyReport = (orders, referenceDate = new Date()) => {
     const lastSevenDays = [];
     for (let index = 6; index >= 0; index -= 1) {
@@ -29,7 +63,7 @@ const buildDailyReport = (orders, referenceDate = new Date()) => {
         date.setHours(0, 0, 0, 0);
         date.setDate(date.getDate() - index);
         lastSevenDays.push({
-            key: date.toISOString().slice(0, 10),
+            key: getLocalDateKey(date),
             label: DAY_LABELS[date.getDay()],
             date: date.toLocaleDateString(),
             amount: 0,
@@ -46,6 +80,33 @@ const buildDailyReport = (orders, referenceDate = new Date()) => {
     });
 
     return lastSevenDays;
+};
+
+const buildWeeklyReport = (orders, referenceDate = new Date()) => {
+    const currentWeek = getWeekStart(referenceDate);
+    const weeks = [];
+    for (let index = 7; index >= 0; index -= 1) {
+        const start = new Date(currentWeek);
+        start.setDate(start.getDate() - index * 7);
+        weeks.push({
+            key: getLocalDateKey(start),
+            label: start.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+            amount: 0,
+            orders: 0,
+        });
+    }
+
+    orders.forEach((order) => {
+        const date = new Date(order.createdAt || "");
+        if (Number.isNaN(date.getTime())) return;
+        const weekKey = getLocalDateKey(getWeekStart(date));
+        const match = weeks.find((entry) => entry.key === weekKey);
+        if (!match) return;
+        match.amount += Number(order.total || 0);
+        match.orders += 1;
+    });
+
+    return weeks;
 };
 
 const buildMonthlyReport = (orders, referenceDate = new Date()) => {
@@ -199,6 +260,7 @@ const AdminSettings = () => {
     const [reportPeriod, setReportPeriod] = useState("daily");
     const [orders, setOrders] = useState(() => readOrders());
     const [reportDate, setReportDate] = useState(() => new Date());
+    const [selectedDate, setSelectedDate] = useState(() => getLocalDateKey(new Date()));
     const [reportMessage, setReportMessage] = useState("");
 
     useEffect(() => {
@@ -218,20 +280,46 @@ const AdminSettings = () => {
     }, []);
 
     const dailyReport = useMemo(() => buildDailyReport(orders, reportDate), [orders, reportDate]);
+    const weeklyReport = useMemo(() => buildWeeklyReport(orders, reportDate), [orders, reportDate]);
     const monthlyReport = useMemo(() => buildMonthlyReport(orders, reportDate), [orders, reportDate]);
     const yearlyReport = useMemo(() => buildYearlyReport(orders, reportDate), [orders, reportDate]);
-    const recentSales = useMemo(() => buildRecentSales(orders), [orders]);
-    const categoryMix = useMemo(() => buildCategoryMix(orders), [orders]);
-    const topItems = useMemo(() => buildTopItems(orders), [orders]);
+    const periodReferenceDate = useMemo(
+        () => reportPeriod === "date" ? new Date(`${selectedDate}T00:00:00`) : reportDate,
+        [reportPeriod, reportDate, selectedDate],
+    );
+    const periodRange = useMemo(() => getPeriodRange(reportPeriod, periodReferenceDate), [reportPeriod, periodReferenceDate]);
+    const periodOrders = useMemo(() => orders.filter((order) => {
+        const createdAt = new Date(order.createdAt || "");
+        return !Number.isNaN(createdAt.getTime()) && createdAt >= periodRange.start && createdAt < periodRange.end;
+    }), [orders, periodRange]);
+    const recentSales = useMemo(() => buildRecentSales(periodOrders), [periodOrders]);
+    const categoryMix = useMemo(() => buildCategoryMix(periodOrders), [periodOrders]);
+    const topItems = useMemo(() => buildTopItems(periodOrders), [periodOrders]);
 
-    const selectedReport = reportPeriod === "daily" ? dailyReport : reportPeriod === "monthly" ? monthlyReport : yearlyReport;
+    const selectedReport = useMemo(() => {
+        if (reportPeriod === "date") return buildDailyReport(orders, periodReferenceDate);
+        if (reportPeriod === "daily") return dailyReport;
+        if (reportPeriod === "weekly") return weeklyReport;
+        if (reportPeriod === "monthly") return monthlyReport;
+        return yearlyReport;
+    }, [dailyReport, monthlyReport, orders, periodReferenceDate, reportPeriod, weeklyReport, yearlyReport]);
 
     const totals = useMemo(() => {
-        const totalSales = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
-        const totalOrders = orders.length;
+        const totalSales = periodOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+        const totalOrders = periodOrders.length;
         const averageTicket = totalOrders > 0 ? totalSales / totalOrders : 0;
         return { totalSales, totalOrders, averageTicket };
-    }, [orders]);
+    }, [periodOrders]);
+
+    const periodLabel = {
+        daily: "Today",
+        weekly: "This week",
+        monthly: "This month",
+        yearly: "This year",
+        date: Number.isNaN(periodReferenceDate.getTime())
+            ? "Selected date"
+            : periodReferenceDate.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" }),
+    }[reportPeriod];
 
     const maxAmount = selectedReport.length ? Math.max(...selectedReport.map((entry) => Number(entry.amount || 0))) : 0;
     const pieGradient = useMemo(() => {
@@ -317,7 +405,7 @@ const AdminSettings = () => {
                             <div className="rounded-[20px] bg-[#2a2a2a] p-5 shadow-lg">
                                 <div className="mb-2 flex items-center gap-3 text-[#ababab]">
                                     <FaDollarSign className="text-[#a6f0c7]" />
-                                    <span className="text-sm uppercase tracking-[0.16em]">Total Revenue</span>
+                                    <span className="text-sm uppercase tracking-[0.16em]">Revenue · {periodLabel}</span>
                                 </div>
                                 <p className="text-3xl font-semibold">₹{totals.totalSales.toLocaleString()}</p>
                             </div>
@@ -325,7 +413,7 @@ const AdminSettings = () => {
                             <div className="rounded-[20px] bg-[#2a2a2a] p-5 shadow-lg">
                                 <div className="mb-2 flex items-center gap-3 text-[#ababab]">
                                     <FaReceipt className="text-[#f7d78c]" />
-                                    <span className="text-sm uppercase tracking-[0.16em]">Total Orders</span>
+                                    <span className="text-sm uppercase tracking-[0.16em]">Orders · {periodLabel}</span>
                                 </div>
                                 <p className="text-3xl font-semibold">{totals.totalOrders}</p>
                             </div>
@@ -333,7 +421,7 @@ const AdminSettings = () => {
                             <div className="rounded-[20px] bg-[#2a2a2a] p-5 shadow-lg">
                                 <div className="mb-2 flex items-center gap-3 text-[#ababab]">
                                     <FaChartPie className="text-[#8ad0ff]" />
-                                    <span className="text-sm uppercase tracking-[0.16em]">Avg Ticket</span>
+                                    <span className="text-sm uppercase tracking-[0.16em]">Avg Ticket · {periodLabel}</span>
                                 </div>
                                 <p className="text-3xl font-semibold">₹{Math.round(totals.averageTicket).toLocaleString()}</p>
                             </div>
@@ -354,6 +442,13 @@ const AdminSettings = () => {
                                             </button>
                                             <button
                                                 type="button"
+                                                onClick={() => setReportPeriod("weekly")}
+                                                className={`rounded-[8px] px-3 py-1 text-xs font-semibold transition ${reportPeriod === "weekly" ? "bg-[#d3d3d3] text-[#1a1a1a]" : "bg-[#3a3a3a] text-[#ababab]"}`}
+                                            >
+                                                Weekly
+                                            </button>
+                                            <button
+                                                type="button"
                                                 onClick={() => setReportPeriod("monthly")}
                                                 className={`rounded-[8px] px-3 py-1 text-xs font-semibold transition ${reportPeriod === "monthly" ? "bg-[#d3d3d3] text-[#1a1a1a]" : "bg-[#3a3a3a] text-[#ababab]"}`}
                                             >
@@ -366,6 +461,24 @@ const AdminSettings = () => {
                                             >
                                                 Yearly
                                             </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setReportPeriod("date")}
+                                                className={`rounded-[8px] px-3 py-1 text-xs font-semibold transition ${reportPeriod === "date" ? "bg-[#d3d3d3] text-[#1a1a1a]" : "bg-[#3a3a3a] text-[#ababab]"}`}
+                                            >
+                                                Specific date
+                                            </button>
+                                            {reportPeriod === "date" && (
+                                                <input
+                                                    type="date"
+                                                    value={selectedDate}
+                                                    onChange={(event) => {
+                                                        if (event.target.value) setSelectedDate(event.target.value);
+                                                    }}
+                                                    aria-label="Select revenue date"
+                                                    className="rounded-[8px] border border-[#555] bg-[#1f1f1f] px-2 py-1 text-xs text-[#f5f5f5] outline-none focus:border-[#d3d3d3]"
+                                                />
+                                            )}
                                             <button
                                                 type="button"
                                                 onClick={exportReportToExcel}

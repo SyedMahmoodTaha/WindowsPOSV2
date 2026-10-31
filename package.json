@@ -1,7 +1,7 @@
 {
   "name": "pfl",
   "private": true,
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Lassi Shop point-of-sale desktop application",
   "author": "Lassi Shop",
   "type": "module",

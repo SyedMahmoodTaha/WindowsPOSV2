@@ -1,5 +1,6 @@
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, nativeImage } = require("electron");
 const fs = require("node:fs");
+const crypto = require("node:crypto");
 const os = require("node:os");
 const path = require("node:path");
 const net = require("node:net");
@@ -40,12 +41,21 @@ const configuredAccounts = [
 ];
 const authenticatedUsers = new Map();
 
-const sharedUserDataDir = path.join(app.getPath("appData"), "Lassi Shop POS Windows");
+const sharedUserDataDir = path.join(app.getPath("appData"), "Lassi Shop POS");
 fs.mkdirSync(sharedUserDataDir, { recursive: true });
-if (app.getPath("userData") !== sharedUserDataDir) app.setPath("userData", sharedUserDataDir);
+const originalUserData = app.getPath("userData");
+if (originalUserData !== sharedUserDataDir) {
+    app.setPath("userData", sharedUserDataDir);
+    const legacyDb = path.join(originalUserData, "pfl.sqlite");
+    const targetDb = path.join(sharedUserDataDir, "pfl.sqlite");
+    if (fs.existsSync(legacyDb) && !fs.existsSync(targetDb)) {
+        fs.copyFileSync(legacyDb, targetDb);
+    }
+}
 
 const settingsPath = () => path.join(app.getPath("userData"), "printer-settings.json");
 const syncSettingsPath = () => path.join(app.getPath("userData"), "sync-settings.json");
+const syncClientsPath = () => path.join(app.getPath("userData"), "sync-clients.json");
 const usersPath = () => path.join(app.getPath("userData"), "users.json");
 const readSyncSettings = () => {
     try {
@@ -222,7 +232,7 @@ const defaultReceiptOptions = {
 };
 
 const defaultBillTemplates = [
-    { id: "classic", name: "Classic 80mm", layout: "classic", paperWidth: 80, alignment: "center", businessName: "Lassi Shop", footerText: "Thank you for visiting us", headerText: "", fields: defaultReceiptOptions },
+    { id: "classic", name: "Photo-style cashier bill", layout: "lassi-shop", paperWidth: 80, alignment: "center", businessName: "Lassi Shop", headerPhoneNumber: "9611648843", fssaiText: "FASSAI", footerPhone: "", gstNumber: "", footerText: "Thank You & Visit Again", headerText: "", fields: defaultReceiptOptions },
     { id: "kitchen-compact", kotTemplateVersion: 2, name: "Kitchen KOT 58mm", layout: "kot", paperWidth: 58, alignment: "center", dividerStyle: "dotted", fontFamily: "verdana", fontSize: 14, titleSize: 16, businessNameSize: 14, horizontalPaddingMm: 3, kotBottomFeedLines: 0, businessName: "Lassi Shop", footerText: "", headerText: "", fields: { ...defaultReceiptOptions, logo: false, customerName: true, phone: false, address: false, deliveryCharges: false, parcelCharges: false, subtotal: false, itemPrice: false, total: false, discount: false, footer: false, dateTime: true, billNumber: true, billType: true, cashierName: false, tableNumber: true, businessName: true }, fieldOrder: ["dateTime", "billNumber", "billType", "divider:kot-customer", "customerName", "tableNumber", "businessName", "divider:kot-items", "items", "divider:kot-notes", "note"], dividers: [{ id: "kot-customer", label: "" }, { id: "kot-items", label: "" }, { id: "kot-notes", label: "" }], fieldLabels: { dateTime: "", billNumber: "KOT -", billType: "", customerName: "Name", businessName: "Biller", tableNumber: "Table No", item: "Item", quantity: "Qty.", note: "Customer Notes" } },
     { id: "minimal", name: "Minimal receipt", layout: "minimal", paperWidth: 80, alignment: "center", businessName: "Lassi Shop", footerText: "Thank you for visiting us", headerText: "", fields: { ...defaultReceiptOptions, logo: false, address: false, note: false, footer: false } },
     { id: "customer", name: "Customer details", layout: "customer", paperWidth: 80, alignment: "center", businessName: "Lassi Shop", footerText: "Thank you for visiting us", headerText: "Freshly prepared for you", fields: defaultReceiptOptions },
@@ -255,17 +265,59 @@ const normalizeBillTemplates = (value) => {
                 kotTemplateVersion: 2,
             };
         }
-        return {
+        const normalized = {
             ...defaultBillTemplates[0],
             ...saved,
             paperWidth: Number(saved.paperWidth) || 80,
             fields: normalizeReceiptOptions(saved.fields),
         };
+        if (saved.id === "classic" && saved.layout === "classic") {
+            normalized.layout = "lassi-shop";
+            if (!saved.footerText || saved.footerText === "Thank you for visiting us") {
+                normalized.footerText = "Thank You & Visit Again";
+            }
+        }
+        return normalized;
     });
     if (!templates.some((template) => template.id === "kitchen-compact")) {
         templates.push(defaultBillTemplates.find((template) => template.id === "kitchen-compact"));
     }
     return templates;
+};
+
+const createEscPosLogo = (template) => {
+    if (!template?.logoDataUrl || template.fields?.logo === false) return null;
+    const image = nativeImage.createFromDataURL(template.logoDataUrl);
+    if (image.isEmpty()) throw new Error("The saved custom logo could not be decoded.");
+
+    const sourceSize = image.getSize();
+    const targetWidth = template.paperWidth === 58 ? 384 : 512;
+    const scale = Math.min(targetWidth / sourceSize.width, 256 / sourceSize.height);
+    if (!Number.isFinite(scale) || scale <= 0) throw new Error("The saved custom logo has invalid dimensions.");
+    const width = Math.max(1, Math.round(sourceSize.width * scale));
+    const height = Math.max(1, Math.round(sourceSize.height * scale));
+    const bitmap = image.resize({ width, height, quality: "best" }).toBitmap();
+    if (bitmap.length < width * height * 4) throw new Error("The saved custom logo could not be converted for this printer.");
+    const bytesPerRow = Math.ceil(width / 8);
+    const raster = Buffer.alloc(bytesPerRow * height);
+
+    for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+            const pixelIndex = (y * width + x) * 4;
+            const blue = bitmap[pixelIndex];
+            const green = bitmap[pixelIndex + 1];
+            const red = bitmap[pixelIndex + 2];
+            const alpha = bitmap[pixelIndex + 3] / 255;
+            const luminance = (red * 0.299 + green * 0.587 + blue * 0.114) * alpha + 255 * (1 - alpha);
+            if (luminance < 160) raster[y * bytesPerRow + Math.floor(x / 8)] |= 0x80 >> (x % 8);
+        }
+    }
+
+    return Buffer.concat([
+        Buffer.from([0x1d, 0x76, 0x30, 0x00, bytesPerRow & 0xff, bytesPerRow >> 8, height & 0xff, height >> 8]),
+        raster,
+        Buffer.from([0x0a]),
+    ]);
 };
 
 const readPrinterSettings = () => {
@@ -332,9 +384,14 @@ const createEscPosReceipt = (order, destination, template) => {
     const horizontalPaddingColumns = isKotTemplate
         ? Math.min(4, Math.max(0, Math.round(horizontalPaddingMm * paperColumns / (template?.paperWidth === 58 ? 58 : 80))))
         : 0;
-    const width = isKotTemplate ? paperColumns - horizontalPaddingColumns * 2 : paperColumns - thermalRightMargin;
+    const width = isKotTemplate
+        ? paperColumns - horizontalPaddingColumns * 2
+        : paperColumns - thermalRightMargin;
     const add = (line = "") => output.push(line);
     const output = [];
+    const serializeOutput = () => Buffer.concat(output.map((part) => (
+        Buffer.isBuffer(part) ? part : Buffer.from(`${part}\n`, "utf8")
+    )));
     const fontSize = Math.min(24, Math.max(10, Number(template?.fontSize) || 14));
     const textMode = (size) => size >= 16 ? 0x18 : size >= 13 ? 0x08 : 0x00;
     const escText = (text, size = fontSize, shouldBold = true) => `\x1b\x21${String.fromCharCode(textMode(size) | (shouldBold ? 0x08 : 0x00))}${text}\x1b\x21\x00`;
@@ -354,9 +411,11 @@ const createEscPosReceipt = (order, destination, template) => {
                         if (part.length === maxWidth) lines.push(part);
                         else line = part;
                     }
-                } else if (!line) line = word;
-                else if (line.length + word.length + 1 <= maxWidth) line += ` ${word}`;
-                else {
+                } else if (!line) {
+                    line = word;
+                } else if (line.length + word.length + 1 <= maxWidth) {
+                    line += ` ${word}`;
+                } else {
                     lines.push(line);
                     line = word;
                 }
@@ -383,14 +442,106 @@ const createEscPosReceipt = (order, destination, template) => {
             return `${" ".repeat(padding)}${formattedLeft}${spaces}${formattedRight}`;
         }).join("\n");
     };
-    const dividerStyle = ["dotted", "dashed", "solid", "double", "none"].includes(template?.dividerStyle) ? template.dividerStyle : "dashed";
-    const dividerCharacter = dividerStyle === "dotted" ? "." : dividerStyle === "double" ? "=" : "-";
-    const dashLine = dividerStyle === "none" ? "" : dividerCharacter.repeat(width - padding);
+    const dividerStyle = ["dashed", "solid", "double", "none"].includes(template?.dividerStyle) ? template.dividerStyle : "dashed";
+    const dashLine = dividerStyle === "none" ? "" : (dividerStyle === "double" ? "=" : "-").repeat(width - padding);
     const labels = { billNumber: "Bill", billType: "Type", dateTime: "Date", tableNumber: "Table", customerName: "Customer", phone: "Phone", subtotal: "Subtotal", deliveryCharges: "Delivery", parcelCharges: "Parcel", discount: "Discount", total: "Total", item: "Item", quantity: "Qty", itemPrice: "Amount", note: "Note", ...(template?.fieldLabels || {}) };
     const title = isKotTemplate ? "" : (template?.titleText || template?.headerText || (destination === "kitchen" ? "KITCHEN KOT" : "CASHIER BILL"));
 
     output.push("\x1b\x40");
     const fields = template?.fields || defaultReceiptOptions;
+    if (order.transferInfo) {
+        output.push("\x1b\x61\x01");
+        addWrappedText("TABLE TRANSFER", Number(template?.titleSize) || fontSize);
+        add(dashLine);
+        addWrappedText(`Bill: ${order.orderNumber || "-"}`);
+        addWrappedText(`From: ${order.transferInfo.fromTable}`);
+        addWrappedText(`To: ${order.transferInfo.toTable}`);
+        output.push("\n\n");
+        output.push("\x1d\x56\x00");
+        return serializeOutput();
+    }
+    if (template?.layout === "lassi-shop" && destination !== "kitchen") {
+        const items = Array.isArray(order.cart) ? order.cart : [];
+        const customerName = order.orderDetails?.customerName || order.customerName || "Walk-in";
+        const phone = order.orderDetails?.phone || order.phone || "";
+        const address = order.orderDetails?.address || order.address || "";
+        const receiptDate = new Date(order.createdAt);
+        const dateText = Number.isNaN(receiptDate.getTime())
+            ? ""
+            : `${String(receiptDate.getDate()).padStart(2, "0")}/${String(receiptDate.getMonth() + 1).padStart(2, "0")}/${String(receiptDate.getFullYear()).slice(-2)} ${String(receiptDate.getHours()).padStart(2, "0")}:${String(receiptDate.getMinutes()).padStart(2, "0")}`;
+        const typeText = order.orderType === "Table"
+            ? "Dine In"
+            : order.orderType === "Takeaway"
+                ? "Take Away"
+                : order.orderType || "Walk-in";
+        const totalQuantity = items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+        const itemSubtotal = items.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
+
+        output.push("\x1b\x61\x01");
+        if (fields.logo && template?.logoDataUrl) output.push(createEscPosLogo(template));
+        if (fields.businessName) addWrappedText(template?.headerPhoneNumber || "9611648843", Number(template?.businessNameSize) || fontSize);
+        output.push("\x1b\x61\x00");
+        if (fields.customerName || fields.phone) {
+            add(leftRight("Name:", `${customerName}${fields.phone && phone ? ` (M: ${phone})` : ""}`));
+        }
+        if (fields.address && address) add(leftRight("Addr:", address));
+        if (fields.customerName || fields.phone || (fields.address && address)) add(dashLine);
+        if (fields.dateTime || fields.billType) add(leftRight(fields.dateTime ? `Date: ${dateText}` : "", fields.billType ? typeText : ""));
+        if (fields.cashierName || fields.billNumber) {
+            add(leftRight(
+                fields.cashierName ? `Cashier: ${cashierName}` : "",
+                fields.billNumber ? `Bill No.: ${order.orderNumber || "-"}` : "",
+            ));
+        }
+        if (fields.items) {
+            if (dashLine) add(dashLine);
+            const columns = paperColumns === 32
+                ? { item: 11, quantity: 4, price: 7, amount: 10 }
+                : { item: 18, quantity: 5, price: 8, amount: 11 };
+            const rowText = (name, quantity, price, amount) => (
+                `${name.padEnd(columns.item).slice(0, columns.item)}`
+                + `${quantity.padStart(columns.quantity).slice(-columns.quantity)}`
+                + `${price.padStart(columns.price).slice(-columns.price)}`
+                + `${amount.padStart(columns.amount).slice(-columns.amount)}`
+            );
+            add(rowText("Item", "Qty.", "Price", "Amount"));
+            items.forEach((item) => {
+                const quantity = Number(item.quantity || 0);
+                const price = Number(item.price || 0);
+                const itemLines = wrapText(item.name || "", columns.item);
+                itemLines.forEach((name, index) => add(rowText(
+                    name,
+                    index === 0 ? String(quantity) : "",
+                    index === 0 ? price.toFixed(2) : "",
+                    index === 0 ? (price * quantity).toFixed(2) : "",
+                )));
+                if (item.note && fields.note) addWrappedText(item.note, Math.max(10, fontSize - 2), false);
+            });
+            if (dashLine) add(dashLine);
+        }
+        if (fields.subtotal) add(leftRight(`Total Qty: ${totalQuantity}`, `Sub Total  ${itemSubtotal.toFixed(2)}`));
+        if (fields.deliveryCharges && Number(order.charges?.Delivery || order.deliveryCharge || 0) > 0) {
+            add(leftRight("Delivery Charge", Number(order.charges?.Delivery || order.deliveryCharge).toFixed(2)));
+        }
+        if (fields.parcelCharges && Number(order.charges?.Parcel || order.parcelCharge || 0) > 0) {
+            add(leftRight("Parcel Charge", Number(order.charges?.Parcel || order.parcelCharge).toFixed(2)));
+        }
+        if (fields.discount && Number(order.discount || 0) > 0) add(leftRight("Discount", `-${Number(order.discount).toFixed(2)}`));
+        if (fields.total) add(leftRight("Grand Total", `₹${Number(order.total || 0).toFixed(2)}`, {
+            boldLeft: template?.boldTotal !== false,
+            boldRight: template?.boldTotal !== false,
+            size: Number(template?.totalSize) || fontSize,
+        }));
+        if (fields.footer) {
+            output.push("\x1b\x61\x01");
+            for (const footerLine of [template?.footerText, template?.fssaiText, template?.footerPhone ? `Phone: ${template.footerPhone}` : "", template?.gstNumber ? `GST: ${template.gstNumber}` : ""]) {
+                if (String(footerLine || "").trim()) addWrappedText(footerLine);
+            }
+        }
+        output.push("\n\n\n");
+        output.push("\x1d\x56\x00");
+        return serializeOutput();
+    }
     if (isKotTemplate) {
         const kotLine = (text, shouldBold = false) => {
             wrapText(text, width).forEach((value) => {
@@ -398,7 +549,8 @@ const createEscPosReceipt = (order, destination, template) => {
                 add(`${" ".repeat(left)}${shouldBold ? bold(value, Number(template?.titleSize) || fontSize) : value}`);
             });
         };
-        const kotDivider = dividerStyle === "none" ? "" : dividerCharacter.repeat(width);
+        const dividerCharacter = dividerStyle === "dotted" ? "." : dividerStyle === "double" ? "=" : "-";
+        const kotDivider = dividerStyle === "none" ? "" : dividerCharacter.repeat(Math.max(0, width - padding));
         const date = new Date(order.createdAt);
         const kotDate = `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getFullYear()).slice(-2)} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
         const kotType = order.orderType === "Table" ? "Dine In" : order.orderType === "Parcel" || order.orderType === "Takeaway" ? "Parcel/Take Away" : order.orderType || "Walk-in";
@@ -434,11 +586,12 @@ const createEscPosReceipt = (order, destination, template) => {
         const bottomFeedLines = Math.min(20, Math.max(0, Number(template?.kotBottomFeedLines ?? 0)));
         if (bottomFeedLines > 0) output.push(`\x1b\x64${String.fromCharCode(bottomFeedLines)}`);
         output.push("\x1d\x56\x00");
-        return Buffer.from(output.join("\n"), "utf8");
+        return serializeOutput();
     }
 
     output.push(alignment === "left" ? "\x1b\x61\x00" : alignment === "right" ? "\x1b\x61\x02" : "\x1b\x61\x01");
-    if (fields.businessName !== false) addWrappedText(template?.businessName || "Lassi Shop", Number(template?.businessNameSize) || fontSize);
+    if (fields.logo && template?.logoDataUrl) output.push(createEscPosLogo(template));
+    if (fields.businessName !== false) addWrappedText(template?.headerPhoneNumber || template?.businessName || "Lassi Shop", Number(template?.businessNameSize) || fontSize);
     addWrappedText(title, Number(template?.titleSize) || fontSize);
     output.push("\x1b\x61\x00");
     if (fields.billNumber) add(leftRight(labels.billNumber, order.orderNumber || "-"));
@@ -452,13 +605,17 @@ const createEscPosReceipt = (order, destination, template) => {
         const hasAmounts = destination !== "kitchen" && fields.itemPrice !== false;
         add(leftRight(labels.item, hasAmounts ? labels.itemPrice : labels.quantity));
         const quantityWidth = Math.max(4, Math.floor(width * (Number(template?.quantityWidth) || 16) / 100));
-        const itemWidth = Math.max(8, width - quantityWidth - padding - 1);
         const rowSpacing = Math.min(3, Math.max(0, Math.round(Number(template?.rowSpacing ?? 4) / 3)));
         order.cart.forEach((item) => {
             const quantity = String(item.quantity ?? 1);
             const amount = hasAmounts ? `₹${Math.round(item.price * item.quantity)}` : "";
+            const quantityAndAmount = amount ? `${quantity} ${amount}` : quantity;
+            const itemWidth = Math.max(1, Math.min(
+                width - quantityWidth - padding - 1,
+                width - padding - Math.min(quantityAndAmount.length, 10) - 1,
+            ));
             wrapText(item.name || "", itemWidth).forEach((name, index) => {
-                add(leftRight(name, index === 0 ? (amount ? `${quantity} ${amount}` : quantity) : ""));
+                add(leftRight(name, index === 0 ? quantityAndAmount : ""));
             });
             if (item.note && fields.note) {
                 wrapText(`${labels.note}: ${item.note}`, Math.max(1, width - padding - 2))
@@ -473,15 +630,23 @@ const createEscPosReceipt = (order, destination, template) => {
     if (fields.deliveryCharges && Number(order.charges?.Delivery || order.deliveryCharge || 0) > 0) add(leftRight(labels.deliveryCharges, `₹${Math.round(Number(order.charges?.Delivery || order.deliveryCharge || 0))}`));
     if (fields.parcelCharges && Number(order.charges?.Parcel || order.parcelCharge || 0) > 0) add(leftRight(labels.parcelCharges, `₹${Math.round(Number(order.charges?.Parcel || order.parcelCharge || 0))}`));
     if (fields.discount && Number(order.discount || 0) > 0) add(leftRight(labels.discount, `-₹${Math.round(Number(order.discount || 0))}`));
-    if (fields.total) add(leftRight(escText(labels.total, Number(template?.totalSize) || fontSize, template?.boldTotal !== false), escText(`₹${Math.round(order.total)}`, Number(template?.totalSize) || fontSize, template?.boldTotal !== false)));
+    if (fields.total) add(leftRight(labels.total, `₹${Math.round(order.total)}`, {
+        boldLeft: template?.boldTotal !== false,
+        boldRight: template?.boldTotal !== false,
+        size: Number(template?.totalSize) || fontSize,
+    }));
     if (fields.note && order.orderNote) {
         wrapText(`${labels.note}: ${order.orderNote}`, Math.max(1, width - padding * 2))
             .forEach((line) => add(line));
     }
-    if (fields.footer && template?.footerText) addWrappedText(template.footerText);
+    if (fields.footer) {
+        for (const footerLine of [template?.footerText, template?.fssaiText, template?.footerPhone ? `Phone: ${template.footerPhone}` : "", template?.gstNumber ? `GST: ${template.gstNumber}` : ""]) {
+            if (String(footerLine || "").trim()) addWrappedText(footerLine);
+        }
+    }
     output.push("\n\n\n");
     output.push("\x1d\x56\x00");
-    return Buffer.from(output.join("\n"), "utf8");
+    return serializeOutput();
 };
 
 const sendToNetworkPrinter = (printer, order, destination, template) => new Promise((resolve, reject) => {
@@ -495,6 +660,47 @@ const isIpAddress = (value) => /^\d{1,3}(?:\.\d{1,3}){3}$/.test(value);
 
 let syncWebSocketServer = null;
 let syncClients = new Set();
+let syncClientDetails = new Map();
+let pendingSyncClients = new Map();
+let posWindow = null;
+
+const readApprovedSyncClients = () => {
+    try {
+        const saved = JSON.parse(fs.readFileSync(syncClientsPath(), "utf8"));
+        if (!Array.isArray(saved)) throw new Error("sync-clients.json must contain an array");
+        return saved.filter((client) => typeof client?.id === "string" && typeof client?.tokenHash === "string");
+    } catch (error) {
+        if (error.code === "ENOENT") return [];
+        throw error;
+    }
+};
+
+const writeApprovedSyncClients = (clients) => {
+    fs.writeFileSync(syncClientsPath(), JSON.stringify(clients, null, 2), { mode: 0o600 });
+};
+
+const hashSyncToken = (token) => crypto.createHash("sha256").update(String(token)).digest("hex");
+const matchesSyncToken = (storedHash, token) => {
+    const storedDigest = Buffer.from(storedHash, "hex");
+    const providedDigest = Buffer.from(hashSyncToken(token), "hex");
+    return storedDigest.length === providedDigest.length && crypto.timingSafeEqual(storedDigest, providedDigest);
+};
+
+const sendSyncMessage = (socket, message) => {
+    if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+};
+
+const authorizeSyncClient = (socket, client, token) => {
+    syncClients.add(socket);
+    syncClientDetails.set(socket, {
+        id: client.id,
+        name: client.name || client.id,
+        address: socket._socket?.remoteAddress || "Unknown",
+        connectedAt: new Date().toISOString(),
+    });
+    sendSyncMessage(socket, { type: "sync-authorized", clientId: client.id, ...(token ? { token } : {}) });
+    sendSyncMessage(socket, { type: "orders-sync", orders: getOrdersFromDb(app), syncedAt: new Date().toISOString() });
+};
 
 const startSyncServer = () => {
     const settings = readSyncSettings();
@@ -503,12 +709,56 @@ const startSyncServer = () => {
 
     const server = new WebSocket.WebSocketServer({ host: "0.0.0.0", port: Number(settings.port || 4099) });
     server.on("connection", (socket) => {
-        syncClients.add(socket);
+        let isAuthorized = false;
+        let pendingRequestId = null;
+        const handshakeTimer = setTimeout(() => {
+            if (!isAuthorized && !pendingRequestId) socket.close(4003, "Connection request timed out");
+        }, 15000);
         socket.on("message", (raw) => {
             try {
                 const payload = JSON.parse(raw.toString());
+                if (!isAuthorized && payload?.type === "connection-request") {
+                    if (pendingRequestId) return;
+                    clearTimeout(handshakeTimer);
+                    if (pendingSyncClients.size >= 32) {
+                        sendSyncMessage(socket, { type: "auth-rejected" });
+                        socket.close(4003, "Host has too many pending requests");
+                        return;
+                    }
+                    pendingRequestId = crypto.randomUUID();
+                    pendingSyncClients.set(pendingRequestId, {
+                        id: pendingRequestId,
+                        name: String(payload.clientName || "POS client").slice(0, 60),
+                        address: socket._socket?.remoteAddress || "Unknown",
+                        requestedAt: new Date().toISOString(),
+                        socket,
+                    });
+                    sendSyncMessage(socket, { type: "connection-pending", requestId: pendingRequestId });
+                    return;
+                }
+
+                if (!isAuthorized && payload?.type === "authenticate" && typeof payload.token === "string") {
+                    clearTimeout(handshakeTimer);
+                    const clients = readApprovedSyncClients();
+                    const client = clients.find((candidate) => matchesSyncToken(candidate.tokenHash, payload.token));
+                    if (!client) {
+                        sendSyncMessage(socket, { type: "auth-rejected" });
+                        socket.close(4003, "Not approved by host");
+                        return;
+                    }
+                    isAuthorized = true;
+                    authorizeSyncClient(socket, client);
+                    return;
+                }
+
+                if (!isAuthorized) {
+                    sendSyncMessage(socket, { type: "auth-required" });
+                    socket.close(4003, "Host approval required");
+                    return;
+                }
+
                 if (payload?.type === "ping") {
-                    socket.send(JSON.stringify({ type: "pong", from: "host", syncedAt: new Date().toISOString() }));
+                    sendSyncMessage(socket, { type: "pong", from: "host", syncedAt: new Date().toISOString() });
                     return;
                 }
 
@@ -516,20 +766,29 @@ const startSyncServer = () => {
                     const nextOrders = payload.orders;
                     saveOrdersToDb(app, nextOrders);
                     broadcastOrdersToClients(nextOrders);
+                    if (posWindow && !posWindow.isDestroyed()) {
+                        posWindow.webContents.send("pfl:orders-synced", nextOrders);
+                    }
                     return;
                 }
             } catch (error) {
                 console.error("Could not process synced orders:", error);
             }
         });
-        socket.send(JSON.stringify({ type: "orders-sync", orders: getOrdersFromDb(app), syncedAt: new Date().toISOString() }));
-        socket.on("close", () => syncClients.delete(socket));
+        socket.on("close", () => {
+            clearTimeout(handshakeTimer);
+            syncClients.delete(socket);
+            syncClientDetails.delete(socket);
+            if (pendingRequestId) pendingSyncClients.delete(pendingRequestId);
+        });
     });
     server.on("error", (error) => {
         console.error("POS sync host failed:", error.message);
         if (syncWebSocketServer === server) {
             syncWebSocketServer = null;
             syncClients.clear();
+            syncClientDetails.clear();
+            pendingSyncClients.clear();
         }
     });
     syncWebSocketServer = server;
@@ -540,7 +799,10 @@ const stopSyncServer = () => {
     const server = syncWebSocketServer;
     syncWebSocketServer = null;
     for (const socket of [...syncClients]) socket.close();
+    for (const request of pendingSyncClients.values()) request.socket.close();
     syncClients.clear();
+    syncClientDetails.clear();
+    pendingSyncClients.clear();
     server.close();
 };
 
@@ -565,6 +827,10 @@ const createWindow = () => {
         },
     });
 
+    posWindow = window;
+    window.on("closed", () => {
+        if (posWindow === window) posWindow = null;
+    });
     window.once("ready-to-show", () => window.show());
     window.loadFile(path.join(__dirname, "../dist/index.html"));
     return window;
@@ -628,9 +894,9 @@ const printOrder = async (event, { html, order, destination }) => {
 
     const printWindow = new BrowserWindow({ show: false });
     await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-
     return new Promise((resolve, reject) => {
         const printOptions = { silent: true, deviceName };
+
         printWindow.webContents.print(printOptions, (success, failureReason) => {
             printWindow.close();
             if (!success) {
@@ -758,6 +1024,95 @@ app.whenReady().then(() => {
         return getDbTableData(app, tableName);
     });
     ipcMain.handle("pfl:get-sync-settings", () => readSyncSettings());
+    ipcMain.handle("pfl:get-sync-status", (event) => {
+        requireAuthenticatedUser(event, ["Admin"]);
+        const settings = readSyncSettings();
+        return {
+            enabled: settings.enabled,
+            mode: settings.mode,
+            hostRunning: Boolean(syncWebSocketServer),
+            port: settings.port,
+            pendingClients: [...pendingSyncClients.values()].map(({ socket, ...request }) => request),
+            approvedClients: readApprovedSyncClients().map(({ tokenHash, ...client }) => ({
+                ...client,
+                connected: [...syncClientDetails.values()].some((connection) => connection.id === client.id),
+            })),
+            clients: [...syncClients]
+                .filter((socket) => socket.readyState === WebSocket.OPEN)
+                .map((socket) => ({
+                    ...syncClientDetails.get(socket),
+                    bufferedAmount: socket.bufferedAmount,
+                })),
+        };
+    });
+    ipcMain.handle("pfl:disconnect-sync-client", (event, clientId) => {
+        requireAuthenticatedUser(event, ["Admin"]);
+        const socket = [...syncClientDetails.entries()].find(([, details]) => details.id === clientId)?.[0];
+        if (!socket || socket.readyState >= WebSocket.CLOSING) return false;
+        socket.close(4001, "Disconnected by administrator");
+        return true;
+    });
+    ipcMain.handle("pfl:approve-sync-client", (event, requestId) => {
+        requireAuthenticatedUser(event, ["Admin"]);
+        const request = pendingSyncClients.get(requestId);
+        if (!request || request.socket.readyState !== WebSocket.OPEN) {
+            if (request) pendingSyncClients.delete(requestId);
+            return false;
+        }
+        const token = crypto.randomBytes(32).toString("hex");
+        const client = {
+            id: crypto.randomUUID(),
+            name: request.name,
+            tokenHash: hashSyncToken(token),
+            approvedAt: new Date().toISOString(),
+        };
+        const clients = readApprovedSyncClients();
+        clients.push(client);
+        writeApprovedSyncClients(clients);
+        pendingSyncClients.delete(requestId);
+        request.socket.removeAllListeners("message");
+        request.socket.on("message", (raw) => {
+            try {
+                const payload = JSON.parse(raw.toString());
+                if (payload?.type !== "orders-sync" || !Array.isArray(payload.orders)) return;
+                saveOrdersToDb(app, payload.orders);
+                broadcastOrdersToClients(payload.orders);
+                if (posWindow && !posWindow.isDestroyed()) posWindow.webContents.send("pfl:orders-synced", payload.orders);
+            } catch (error) {
+                console.error("Could not process approved client orders:", error);
+            }
+        });
+        const details = {
+            id: client.id,
+            name: client.name,
+            address: request.address,
+            connectedAt: new Date().toISOString(),
+        };
+        syncClients.add(request.socket);
+        syncClientDetails.set(request.socket, details);
+        sendSyncMessage(request.socket, { type: "sync-authorized", clientId: client.id, token });
+        sendSyncMessage(request.socket, { type: "orders-sync", orders: getOrdersFromDb(app), syncedAt: new Date().toISOString() });
+        return true;
+    });
+    ipcMain.handle("pfl:reject-sync-client", (event, requestId) => {
+        requireAuthenticatedUser(event, ["Admin"]);
+        const request = pendingSyncClients.get(requestId);
+        if (!request) return false;
+        pendingSyncClients.delete(requestId);
+        request.socket.close(4003, "Connection request rejected by host");
+        return true;
+    });
+    ipcMain.handle("pfl:revoke-sync-client", (event, clientId) => {
+        requireAuthenticatedUser(event, ["Admin"]);
+        const clients = readApprovedSyncClients();
+        const remainingClients = clients.filter((client) => client.id !== clientId);
+        if (remainingClients.length === clients.length) return false;
+        writeApprovedSyncClients(remainingClients);
+        for (const [socket, details] of syncClientDetails.entries()) {
+            if (details.id === clientId) socket.close(4003, "Access revoked by host");
+        }
+        return true;
+    });
     ipcMain.handle("pfl:set-sync-settings", (event, settings) => {
         requireAuthenticatedUser(event, ["Admin"]);
         const previous = readSyncSettings();

@@ -10,12 +10,17 @@ const defaultCatalog = {
 };
 
 const getDataDirectory = (app) => {
-    const sharedDir = path.join(app.getPath("appData"), "Lassi Shop POS Windows");
+    const sharedDir = path.join(app.getPath("appData"), "Lassi Shop POS");
     const originalUserData = app.getPath("userData");
 
     fs.mkdirSync(sharedDir, { recursive: true });
     if (originalUserData !== sharedDir) {
         app.setPath("userData", sharedDir);
+        const legacyDb = path.join(originalUserData, "pfl.sqlite");
+        const targetDb = path.join(sharedDir, "pfl.sqlite");
+        if (fs.existsSync(legacyDb) && !fs.existsSync(targetDb)) {
+            fs.copyFileSync(legacyDb, targetDb);
+        }
     }
 
     return app.getPath("userData");

@@ -146,5 +146,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lassi-shop-db-viewer-windows
-          path: DB-Viewer/release/**/*
+          path: DB-Viewer/release/*.exe
           if-no-files-found: error

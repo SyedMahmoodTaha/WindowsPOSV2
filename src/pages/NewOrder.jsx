@@ -4,7 +4,7 @@ import { FaRegStickyNote } from "react-icons/fa";
 import { MdOutlineTableBar } from "react-icons/md";
 import { FaShoppingCart } from "react-icons/fa";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { appendOrder, getNextBillNumber, printOrder, readOrders, updateOrder } from "../utils/orderStorage";
+import { appendOrder, getNextBillNumber, getNextTokenNumber, printOrder, readOrders, updateOrder } from "../utils/orderStorage";
 import { readCatalog, readCatalogAsync, readTables, readTablesAsync } from "../utils/catalog";
 import { getCustomerByPhone, getCustomerId, normalizeCustomerPhone } from "../utils/customers";
 import { createDeliveryDispatch, ORDER_SCHEMA_VERSION } from "../utils/orderModel";
@@ -33,6 +33,34 @@ const orderTypeFields = {
         { name: "phone", label: "Phone number", placeholder: "Enter phone number" },
         { name: "address", label: "Address", placeholder: "Enter delivery address", multiline: true },
     ],
+};
+
+const getOrderDetailsForType = (type, details = {}) => Object.fromEntries(
+    (orderTypeFields[type] || [])
+        .map(({ name }) => [name, details[name]])
+        .filter(([, value]) => value !== undefined && value !== null && value !== ""),
+);
+
+const getCartProductId = (item) => {
+    if (item.productId !== undefined && item.productId !== null) return String(item.productId);
+    const itemId = String(item.id ?? "");
+    return itemId.includes(":") ? itemId.slice(0, itemId.indexOf(":")) : itemId;
+};
+
+const getCartProductValue = (item) => {
+    if (item.productId !== undefined && item.productId !== null) return item.productId;
+    if (typeof item.id === "number") return item.id;
+    const itemId = String(item.id ?? "");
+    return itemId.includes(":") ? itemId.slice(0, itemId.indexOf(":")) : item.id;
+};
+
+const getCartVariationName = (item) => {
+    if (item.variationName) return String(item.variationName);
+    const itemId = String(item.id ?? "");
+    const separator = itemId.indexOf(":");
+    if (separator < 0) return "";
+    const legacyVariation = itemId.slice(separator + 1);
+    return legacyVariation === "base" ? "" : legacyVariation;
 };
 
 const NewOrder = () => {
@@ -129,7 +157,7 @@ const NewOrder = () => {
             originalCartRef.current = existingOrder.cart.map((item) => ({ ...item }));
             setCart(existingOrder.cart);
             setOrderType(existingOrder.orderType);
-            setOrderDetails(existingOrder.orderDetails || {});
+            setOrderDetails(getOrderDetailsForType(existingOrder.orderType, existingOrder.orderDetails || {}));
             setCharges(existingOrder.charges || orderCharges);
             setOrderNote(existingOrder.orderNote || "");
         }
@@ -173,17 +201,39 @@ const NewOrder = () => {
     }, []);
 
     const addToCart = (menuItem, variation = null) => {
-        const selectedVariation = variation || null;
-        const cartId = `${menuItem.id}:${selectedVariation?.name || "base"}`;
-        const cartItem = { ...menuItem, ...(selectedVariation ? { name: `${menuItem.name} - ${selectedVariation.name}`, price: selectedVariation.price, variationName: selectedVariation.name } : {}), productId: menuItem.id, id: cartId, quantity: 1, note: "" };
+        const selectedVariationName = String(variation?.name || menuItem.variationName || getCartVariationName(menuItem));
+        const productId = getCartProductValue(menuItem);
+        const cartId = `${productId}:${selectedVariationName || "base"}`;
+        const cartItem = {
+            ...menuItem,
+            ...(variation ? {
+                name: `${menuItem.name} - ${variation.name}`,
+                price: variation.price,
+            } : {}),
+            ...(selectedVariationName ? { variationName: selectedVariationName } : {}),
+            productId,
+            id: cartId,
+            quantity: 1,
+            note: "",
+        };
         setCart((currentCart) => {
-            const existingItem = currentCart.find((item) => item.id === cartId);
+            const existingItem = currentCart.find((item) => (
+                getCartProductId(item) === String(productId)
+                && getCartVariationName(item) === selectedVariationName
+                && !String(item.note || "").trim()
+            ));
             if (existingItem) {
-                return currentCart.map((item) => item.id === cartId
+                return currentCart.map((item) => item.id === existingItem.id
                     ? { ...item, quantity: item.quantity + 1 }
                     : item);
             }
-            return [...currentCart, cartItem];
+            const matchingLineCount = currentCart.filter((item) => (
+                String(item.id) === cartId || String(item.id).startsWith(`${cartId}:line:`)
+            )).length;
+            const uniqueId = matchingLineCount > 0
+                ? `${cartId}:line:${matchingLineCount + 1}`
+                : cartId;
+            return [...currentCart, { ...cartItem, id: uniqueId }];
         });
     };
 
@@ -217,7 +267,6 @@ const NewOrder = () => {
         : selectedCategory === "All"
             ? menuItems
             : menuItems.filter((item) => item.category === selectedCategory);
-    const orderedCategories = ["Favourites", ...categories.filter((category) => category !== "Favourites")];
     const currentOrderFields = orderType ? orderTypeFields[orderType] : [];
     const searchTerm = menuSearch.toLowerCase().trim();
     const filteredItems = (searchTerm ? menuItems : visibleItems).filter((item) => item.name.toLowerCase().includes(searchTerm));
@@ -231,6 +280,7 @@ const NewOrder = () => {
     const handleTableNumberChange = (event) => {
         const tableNumber = event.target.value;
         setOrderDetails((currentDetails) => ({ ...currentDetails, tableNumber }));
+        setTableCollision(null);
         if (!tableNumber.trim() || existingOrderRef.current?.orderDetails?.tableNumber === tableNumber.trim()) return;
         const runningOrder = readOrders().find((order) => order.orderType === "Table" && order.status !== "completed" && order.orderDetails?.tableNumber === tableNumber.trim());
         if (runningOrder) setTableCollision(runningOrder);
@@ -278,10 +328,17 @@ const NewOrder = () => {
         }));
     };
 
+    const changeOrderType = (type) => {
+        setOrderType(type);
+        setOrderDetails(getOrderDetailsForType(type, orderDetails));
+        setCharges(orderCharges);
+        setDetailsOpen(false);
+        setSummaryOpen(false);
+    };
+
     const toggleOrderType = (type) => {
         const isSameType = orderType === type || (type === "Parcel" && orderType === "Takeaway");
-        setOrderType(isSameType ? "" : type);
-        setDetailsOpen(false);
+        changeOrderType(isSameType ? "" : type);
     };
 
     const holdCurrentOrder = () => {
@@ -291,7 +348,7 @@ const NewOrder = () => {
             id: activeHeldOrderId || Date.now(),
             cart,
             orderType,
-            orderDetails,
+            orderDetails: getOrderDetailsForType(orderType, orderDetails),
             charges,
             total,
             orderNote,
@@ -392,6 +449,7 @@ const NewOrder = () => {
             schemaVersion: ORDER_SCHEMA_VERSION,
             id: existingOrderRef.current?.id || Date.now(),
             orderNumber: existingOrderRef.current?.orderNumber || getNextBillNumber(),
+            tokenNumber: existingOrderRef.current?.tokenNumber || getNextTokenNumber(),
             cart,
             orderType: orderType || "Unassigned",
             orderDetails,
@@ -483,7 +541,7 @@ const NewOrder = () => {
                     <aside className="min-h-0 overflow-y-auto">
                         <h2 className="mb-4 text-xl font-semibold">Categories</h2>
                         <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
-                            {orderedCategories.map((category) => (
+                            {categories.map((category) => (
                                 <button
                                     key={category}
                                     type="button"
@@ -591,8 +649,7 @@ const NewOrder = () => {
                                             value={orderType}
                                             onClick={(event) => event.stopPropagation()}
                                             onChange={(event) => {
-                                                setOrderType(event.target.value);
-                                                setDetailsOpen(false);
+                                                changeOrderType(event.target.value);
                                             }}
                                             className="max-w-28 cursor-pointer rounded-[10px] bg-[#bdbdbd] px-2 py-2 text-sm text-[#1a1a1a] outline-none"
                                             aria-label="Parcel or takeaway"
@@ -607,7 +664,7 @@ const NewOrder = () => {
 
                         {orderType && orderType !== "Table" && (
                             <section
-                                className={`flex-none overflow-hidden rounded-[24px] bg-[#2a2a2a] p-4 shadow-lg transition-[max-height,opacity,transform,background-color] duration-300 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] hover:bg-[#303030] ${detailsOpen ? "max-h-96 translate-y-0 opacity-100" : "max-h-16 translate-y-0 opacity-100"}`}
+                                className={`order-details-panel flex-none overflow-hidden rounded-[24px] bg-[#2a2a2a] p-4 shadow-lg transition-[max-height,opacity,transform,background-color] duration-300 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] hover:bg-[#303030] ${detailsOpen ? "max-h-96 translate-y-0 opacity-100" : "max-h-16 translate-y-0 opacity-100"}`}
                                 onClick={(event) => {
                                     if (!event.target.closest?.("input, textarea, select, button")) {
                                         setDetailsOpen((isOpen) => !isOpen);
@@ -643,7 +700,7 @@ const NewOrder = () => {
                                                     onChange={handleDetailChange}
                                                     placeholder={field.placeholder}
                                                     rows="2"
-                                                    className="resize-none rounded-[12px] border border-[#444444] bg-[#1f1f1f] px-3 py-2 text-[#f5f5f5] outline-none transition-colors placeholder:text-[#666666] focus:border-[#d3d3d3]"
+                                                    className="order-details-field resize-none rounded-[12px] border border-[#444444] bg-[#1f1f1f] px-3 py-2 text-[#f5f5f5] outline-none transition-colors placeholder:text-[#666666] focus:border-[#d3d3d3]"
                                                 />
                                             ) : (
                                                     <input
@@ -654,7 +711,7 @@ const NewOrder = () => {
                                                     value={orderDetails[field.name] || ""}
                                                         onChange={field.name === "phone" ? handlePhoneChange : handleDetailChange}
                                                     placeholder={field.placeholder}
-                                                    className="rounded-[12px] border border-[#444444] bg-[#1f1f1f] px-3 py-2 text-[#f5f5f5] outline-none transition-colors placeholder:text-[#666666]"
+                                                    className="order-details-field rounded-[12px] border border-[#444444] bg-[#1f1f1f] px-3 py-2 text-[#f5f5f5] outline-none transition-colors placeholder:text-[#666666]"
                                                 />
                                             )}
                                             {field.name === "phone" && customerLookupMessage && (

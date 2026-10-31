@@ -9,10 +9,15 @@ const previewOrder = {
     orderNumber: "37",
     orderType: "Parcel",
     orderDetails: { customerName: "Arslan", phone: "9876543210", address: "12 Market Road", tableNumber: "R1" },
-    cart: [{ id: "preview-1", name: "Sckn Pizza1 Ckn\nPopcorn1 Fries2\nWatermelon2", quantity: 1, price: 120 }],
-    charges: { Parcel: 10 },
-    subtotal: 240,
-    total: 250,
+    cart: [
+        { id: "preview-1", name: "Shawarma Roll", quantity: 2, price: 80 },
+        { id: "preview-2", name: "Veg Burger 2+1", quantity: 1, price: 240 },
+        { id: "preview-3", name: "French Fries (small)", quantity: 1, price: 70 },
+        { id: "preview-4", name: "Chicken Loaded", quantity: 1, price: 150 },
+    ],
+    charges: { Delivery: 50 },
+    subtotal: 620,
+    total: 670,
     orderNote: "paid",
     createdAt: "2026-09-14T21:31:00",
 };
@@ -70,7 +75,7 @@ const BillPrintingPreferences = () => {
     };
     const toggleReceiptOption = (option) => updateSelectedTemplate({ fields: { ...selectedTemplate.fields, [option]: !selectedTemplate.fields?.[option] } });
     const moveField = (targetField) => {
-        if (!draggedField || draggedField === targetField) return;
+        if (selectedTemplate.layout === "lassi-shop" || !draggedField || draggedField === targetField) return;
         const nextOrder = [...selectedTemplate.fieldOrder];
         const sourceIndex = nextOrder.indexOf(draggedField);
         const targetIndex = nextOrder.indexOf(targetField);
@@ -112,12 +117,17 @@ const BillPrintingPreferences = () => {
     const saveTemplates = async () => {
         const selectedBillTemplateIds = { ...settings.selectedBillTemplateIds, [destination]: selectedTemplateId };
         const payload = { billTemplates: settings.billTemplates, selectedBillTemplateIds, selectedBillTemplateId: selectedBillTemplateIds.cashier, printCashierToKitchen: settings.printCashierToKitchen };
-        if (window.pflDesktop) {
-            await window.pflDesktop.setPrinterSettings(payload);
-        } else {
-            saveWebPrinterSettings(payload);
+        try {
+            if (window.pflDesktop) {
+                await window.pflDesktop.setPrinterSettings(payload);
+            } else {
+                saveWebPrinterSettings(payload);
+            }
+            setMessage("Bill layout preference saved");
+        } catch (error) {
+            console.error("Could not save bill layout preference", error);
+            setMessage("Could not save bill layout preference");
         }
-        setMessage("Bill layout preference saved");
     };
 
     return (
@@ -136,9 +146,9 @@ const BillPrintingPreferences = () => {
                         {selectedTemplate && <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
                             <div className="grid gap-3">
                                 <div className="flex flex-wrap gap-2"><input value={selectedTemplate.name} onChange={(event) => updateTemplateField("name", event.target.value)} className="min-w-[12rem] flex-1 rounded-[10px] border border-[#444] bg-[#1f1f1f] px-3 py-2 text-sm text-[#f5f5f5]" placeholder="Layout name" /><button type="button" onClick={duplicateTemplate} className="rounded-[10px] bg-[#3a3a3a] px-3 py-2 text-xs font-semibold">Duplicate</button><button type="button" onClick={deleteTemplate} disabled={settings.billTemplates.length <= 1} className="rounded-[10px] bg-[#3a3a3a] px-3 py-2 text-xs font-semibold disabled:opacity-40">Delete</button></div>
-                                <div className="grid gap-3 sm:grid-cols-3"><label className="grid gap-1 text-xs text-[#ababab]">Layout<select value={selectedTemplate.layout} onChange={(event) => updateTemplateField("layout", event.target.value)} className="field"><option value="classic">Classic</option><option value="kot">Kitchen KOT</option><option value="minimal">Minimal</option><option value="customer">Customer details</option></select></label><label className="grid gap-1 text-xs text-[#ababab]">Paper width<select value={selectedTemplate.paperWidth} onChange={(event) => updateTemplateField("paperWidth", Number(event.target.value))} className="field"><option value="58">58mm</option><option value="80">80mm</option></select></label><label className="grid gap-1 text-xs text-[#ababab]">Alignment<select value={selectedTemplate.alignment} onChange={(event) => updateTemplateField("alignment", event.target.value)} className="field"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label></div>
+                                <div className="grid gap-3 sm:grid-cols-3"><label className="grid gap-1 text-xs text-[#ababab]">Layout<select value={selectedTemplate.layout} onChange={(event) => updateTemplateField("layout", event.target.value)} className="field"><option value="lassi-shop">Photo-style cashier</option><option value="classic">Classic</option><option value="kot">Kitchen KOT</option><option value="minimal">Minimal</option><option value="customer">Customer details</option></select></label><label className="grid gap-1 text-xs text-[#ababab]">Paper width<select value={selectedTemplate.paperWidth} onChange={(event) => updateTemplateField("paperWidth", Number(event.target.value))} className="field"><option value="58">58mm</option><option value="80">80mm</option></select></label><label className="grid gap-1 text-xs text-[#ababab]">Alignment<select value={selectedTemplate.alignment} onChange={(event) => updateTemplateField("alignment", event.target.value)} className="field"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label></div>
                                 <div className="grid gap-3 sm:grid-cols-2"><label className="grid gap-1 text-xs text-[#ababab]">Business name<input value={selectedTemplate.businessName} onChange={(event) => updateTemplateField("businessName", event.target.value)} className="field" /></label><label className="grid gap-1 text-xs text-[#ababab]">Header text<input value={selectedTemplate.headerText} onChange={(event) => updateTemplateField("headerText", event.target.value)} className="field" placeholder="Optional" /></label><label className="grid gap-1 text-xs text-[#ababab] sm:col-span-2">Footer text<input value={selectedTemplate.footerText} onChange={(event) => updateTemplateField("footerText", event.target.value)} className="field" /></label></div>
-                                <div><div className="mb-2 flex items-center justify-between gap-2"><div><p className="text-sm font-semibold">Show on bill</p><p className="mt-1 text-xs text-[#ababab]">Drag a row to change its position.</p></div><button type="button" onClick={addDivider} className="rounded-[10px] bg-[#3a3a3a] px-3 py-2 text-xs font-semibold hover:bg-[#444]">Add divider</button></div><div className="mb-2 grid gap-2 sm:grid-cols-2">{BILL_FIELD_DEFINITIONS.filter(({ key }) => ["logo", "businessName"].includes(key)).map(({ key, label }) => <label key={key} className="flex items-center gap-3 rounded-[10px] border border-[#444] bg-[#1f1f1f] px-3 py-2 text-sm"><input type="checkbox" checked={Boolean(selectedTemplate.fields?.[key])} onChange={() => toggleReceiptOption(key)} className="size-4" /><span>{label}</span></label>)}</div><div className="grid gap-2">{selectedTemplate.fieldOrder.filter((key) => !["logo", "businessName"].includes(key)).map((key) => { const field = BILL_FIELD_DEFINITIONS.find((definition) => definition.key === key); const dividerId = key.startsWith("divider:") ? key.slice(8) : null; const divider = dividerId ? selectedTemplate.dividers.find((item) => item.id === dividerId) : null; if (!field && !divider) return null; return <label key={key} draggable onDragStart={() => setDraggedField(key)} onDragOver={(event) => event.preventDefault()} onDrop={() => moveField(key)} className={`flex cursor-grab items-center gap-3 rounded-[10px] border border-[#444] bg-[#1f1f1f] px-3 py-2 text-sm active:cursor-grabbing ${draggedField === key ? "opacity-50" : ""}`}><span className="select-none text-[#777]">::</span>{divider ? <><span className="flex-1 text-[#ababab]">Divider</span><input value={divider.label} onChange={(event) => updateDivider(divider.id, event.target.value)} className="field min-w-0 flex-1" placeholder="Optional divider label" /><button type="button" onClick={() => removeDivider(divider.id)} className="rounded-[8px] px-2 py-1 text-xs text-[#f08080] hover:bg-[#3a3a3a]">Remove</button></> : <><input type="checkbox" checked={Boolean(selectedTemplate.fields?.[key])} onChange={() => toggleReceiptOption(key)} className="size-4" /><span>{field.label}</span></>}</label>; })}</div></div>
+                                <div><div className="mb-2 flex items-center justify-between gap-2"><div><p className="text-sm font-semibold">Show on bill</p><p className="mt-1 text-xs text-[#ababab]">{selectedTemplate.layout === "lassi-shop" ? "Photo-style cashier order is fixed; checkboxes control field visibility." : "Drag a row to change its position."}</p></div><button type="button" onClick={addDivider} className="rounded-[10px] bg-[#3a3a3a] px-3 py-2 text-xs font-semibold hover:bg-[#444]">Add divider</button></div><div className="mb-2 grid gap-2 sm:grid-cols-2">{BILL_FIELD_DEFINITIONS.filter(({ key }) => ["logo", "businessName"].includes(key)).map(({ key, label }) => <label key={key} className="flex items-center gap-3 rounded-[10px] border border-[#444] bg-[#1f1f1f] px-3 py-2 text-sm"><input type="checkbox" checked={Boolean(selectedTemplate.fields?.[key])} onChange={() => toggleReceiptOption(key)} className="size-4" /><span>{label}</span></label>)}</div><div className="grid gap-2">{selectedTemplate.fieldOrder.filter((key) => !["logo", "businessName"].includes(key)).map((key) => { const field = BILL_FIELD_DEFINITIONS.find((definition) => definition.key === key); const dividerId = key.startsWith("divider:") ? key.slice(8) : null; const divider = dividerId ? selectedTemplate.dividers.find((item) => item.id === dividerId) : null; if (!field && !divider) return null; const canReorder = selectedTemplate.layout !== "lassi-shop"; return <label key={key} draggable={canReorder} onDragStart={() => canReorder && setDraggedField(key)} onDragOver={(event) => canReorder && event.preventDefault()} onDrop={() => moveField(key)} className={`flex ${canReorder ? "cursor-grab active:cursor-grabbing" : "cursor-default"} items-center gap-3 rounded-[10px] border border-[#444] bg-[#1f1f1f] px-3 py-2 text-sm ${draggedField === key ? "opacity-50" : ""}`}><span className="select-none text-[#777]">{canReorder ? "::" : ""}</span>{divider ? <><span className="flex-1 text-[#ababab]">Divider</span><input value={divider.label} onChange={(event) => updateDivider(divider.id, event.target.value)} className="field min-w-0 flex-1" placeholder="Optional divider label" /><button type="button" onClick={() => removeDivider(divider.id)} className="rounded-[8px] px-2 py-1 text-xs text-[#f08080] hover:bg-[#3a3a3a]">Remove</button></> : <><input type="checkbox" checked={Boolean(selectedTemplate.fields?.[key])} onChange={() => toggleReceiptOption(key)} className="size-4" /><span>{field.label}</span></>}</label>; })}</div></div>
                             </div>
                             <div className="min-w-0"><p className="mb-2 text-sm font-semibold">Preview · {selectedTemplate.paperWidth}mm roll</p><div className="overflow-x-auto rounded-[10px] border border-[#444] bg-[#e8e8e8] p-3"><iframe title="Bill preview" srcDoc={renderReceiptHtml(previewOrder, destination, selectedTemplate)} className="h-[38rem] min-w-[18rem] w-full rounded-[4px] border-0 bg-white shadow-md" /></div><p className="mt-2 text-xs text-[#ababab]">Roll height is content-sized. Confirm margins and cut position with a test print on your printer.</p></div>
                         </div>}

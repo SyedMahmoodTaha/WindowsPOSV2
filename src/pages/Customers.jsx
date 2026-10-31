@@ -83,7 +83,7 @@ const Customers = () => {
     };
 
     return (
-        <main className="min-h-screen bg-[#1f1f1f] px-4 py-6 text-[#f5f5f5] sm:px-6">
+        <main className="customer-page min-h-screen bg-[#1f1f1f] px-4 py-6 text-[#f5f5f5] sm:px-6">
             <div className="mx-auto max-w-7xl">
                 <header className="mb-6 flex items-center gap-4">
                     <Link to="/" className="rounded-full p-3 text-[#d3d3d3] transition-colors hover:bg-[#d3d3d3] hover:text-[#1a1a1a]" aria-label="Back to home">
@@ -107,7 +107,7 @@ const Customers = () => {
                 </section>
 
                 <section className="grid gap-5 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.5fr)]">
-                    <div className="rounded-[20px] bg-[#2a2a2a] p-4">
+                    <div className="customer-panel rounded-[20px] bg-[#2a2a2a] p-4">
                         <label className="mb-4 flex items-center gap-2 rounded-[10px] border border-[#444] bg-[#1f1f1f] px-3 py-2 text-[#ababab]">
                             <FaMagnifyingGlass />
                             <input
@@ -144,7 +144,7 @@ const Customers = () => {
                         )}
                     </div>
 
-                    <div className="min-w-0 rounded-[20px] bg-[#2a2a2a] p-5">
+                    <div className="customer-panel min-w-0 rounded-[20px] bg-[#2a2a2a] p-5">
                         {selectedCustomer ? (
                             <>
                                 <div className="flex flex-col justify-between gap-4 border-b border-[#444] pb-4 sm:flex-row sm:items-start">

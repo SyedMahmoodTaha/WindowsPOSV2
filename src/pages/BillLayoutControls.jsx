@@ -104,13 +104,16 @@ const BillLayoutControls = ({ template, onChange, onLogoUpload }) => {
                             <input type="range" min="0" max="20" value={template.kotBottomFeedLines ?? 0} onChange={(event) => updateNumber("kotBottomFeedLines", event.target.value, 0, 20)} className="accent-[#d3d3d3]" />
                         </label>
                     </>}
+                    <p className="text-xs text-[#ababab] sm:col-span-2 xl:col-span-3">
+                        Verdana is used for system and browser printing. Network thermal printers use their built-in font; long text wraps within the selected paper width. Roll length follows the content; use bottom feed to calibrate the space before cutting.
+                    </p>
                     <label className="grid gap-1 text-xs text-[#ababab]">
-                        Business name size ({template.businessNameSize || 19}px)
-                        <input type="range" min="12" max="32" value={template.businessNameSize || 19} onChange={(event) => updateNumber("businessNameSize", event.target.value, 12, 32)} className="accent-[#d3d3d3]" />
+                        Business name size ({template.businessNameSize || 17}px)
+                        <input type="range" min="12" max="32" value={template.businessNameSize || 17} onChange={(event) => updateNumber("businessNameSize", event.target.value, 12, 32)} className="accent-[#d3d3d3]" />
                     </label>
                     <label className="grid gap-1 text-xs text-[#ababab]">
-                        Total size ({template.totalSize || 17}px)
-                        <input type="range" min="12" max="28" value={template.totalSize || 17} onChange={(event) => updateNumber("totalSize", event.target.value, 12, 28)} className="accent-[#d3d3d3]" />
+                        Total size ({template.totalSize || 15}px)
+                        <input type="range" min="12" max="28" value={template.totalSize || 15} onChange={(event) => updateNumber("totalSize", event.target.value, 12, 28)} className="accent-[#d3d3d3]" />
                     </label>
                     <label className="flex items-center gap-2 self-end rounded-[10px] border border-[#444] px-3 py-2 text-sm">
                         <input type="checkbox" checked={template.boldTotal !== false} onChange={(event) => onChange({ boldTotal: event.target.checked })} className="size-4" />
@@ -125,6 +128,26 @@ const BillLayoutControls = ({ template, onChange, onLogoUpload }) => {
                 {template.logoDataUrl && <button type="button" onClick={() => onChange({ logoDataUrl: "" })} className="w-fit rounded-[8px] border border-[#555] px-3 py-2 text-xs text-[#f5f5f5] hover:bg-[#3a3a3a]">Remove custom logo</button>}
             </label>
 
+            <div className="grid gap-3 border-t border-[#444] pt-3 sm:grid-cols-2">
+                <label className="grid gap-1 text-xs text-[#ababab]">
+                    Header phone (below logo)
+                    <input type="tel" value={template.headerPhoneNumber ?? "9611648843"} onChange={(event) => onChange({ headerPhoneNumber: event.target.value })} className="field" />
+                </label>
+                <label className="grid gap-1 text-xs text-[#ababab]">
+                    FASSAI label
+                    <input value={template.fssaiText ?? "FASSAI"} onChange={(event) => onChange({ fssaiText: event.target.value })} className="field" />
+                </label>
+                <label className="grid gap-1 text-xs text-[#ababab]">
+                    Footer phone number
+                    <input type="tel" value={template.footerPhone || ""} onChange={(event) => onChange({ footerPhone: event.target.value })} className="field" placeholder="Optional" />
+                </label>
+                <label className="grid gap-1 text-xs text-[#ababab]">
+                    GST number
+                    <input value={template.gstNumber || ""} onChange={(event) => onChange({ gstNumber: event.target.value })} className="field" placeholder="Optional" />
+                </label>
+                <p className="text-xs text-[#ababab] sm:col-span-2">These business details are saved with this bill layout and printed in the header/footer when those sections are enabled.</p>
+            </div>
+
             <details className="border-t border-[#444] pt-3">
                 <summary className="cursor-pointer text-sm font-semibold">Customize printed labels</summary>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -136,7 +159,7 @@ const BillLayoutControls = ({ template, onChange, onLogoUpload }) => {
                     ))}
                 </div>
             </details>
-            <p className="text-xs text-[#ababab]">Verdana is used for HTML/system-printer output. Network thermal printers use their built-in font; long KOT item names and notes wrap to fit the selected roll width.</p>
+            <p className="text-xs text-[#ababab]">Uploaded logos print on system printers and supported ESC/POS network printers (converted to monochrome). Network thermal printers use built-in fonts and support a smaller subset of these controls.</p>
         </div>
     );
 };

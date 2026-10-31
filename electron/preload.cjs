@@ -16,6 +16,11 @@ contextBridge.exposeInMainWorld("pflDesktop", {
     saveTables: (tables) => ipcRenderer.invoke("pfl:save-tables", tables),
     getOrders: () => ipcRenderer.invoke("pfl:get-orders"),
     saveOrders: (orders) => ipcRenderer.invoke("pfl:save-orders", orders),
+    onOrdersSynced: (callback) => {
+        const listener = (_event, orders) => callback(orders);
+        ipcRenderer.on("pfl:orders-synced", listener);
+        return () => ipcRenderer.removeListener("pfl:orders-synced", listener);
+    },
     getCustomers: () => ipcRenderer.invoke("pfl:get-customers"),
     getCustomerByPhone: (phone) => ipcRenderer.invoke("pfl:get-customer-by-phone", phone),
     saveCustomerNotes: ({ customerId, notes }) => ipcRenderer.invoke("pfl:save-customer-notes", { customerId, notes }),
@@ -27,6 +32,11 @@ contextBridge.exposeInMainWorld("pflDesktop", {
     updateDbRow: ({ tableName, idColumn, idValue, row }) => ipcRenderer.invoke("pfl:update-db-row", { tableName, idColumn, idValue, row }),
     deleteDbRow: ({ tableName, idColumn, idValue }) => ipcRenderer.invoke("pfl:delete-db-row", { tableName, idColumn, idValue }),
     getSyncSettings: () => ipcRenderer.invoke("pfl:get-sync-settings"),
+    getSyncStatus: () => ipcRenderer.invoke("pfl:get-sync-status"),
+    disconnectSyncClient: (clientId) => ipcRenderer.invoke("pfl:disconnect-sync-client", clientId),
+    approveSyncClient: (requestId) => ipcRenderer.invoke("pfl:approve-sync-client", requestId),
+    rejectSyncClient: (requestId) => ipcRenderer.invoke("pfl:reject-sync-client", requestId),
+    revokeSyncClient: (clientId) => ipcRenderer.invoke("pfl:revoke-sync-client", clientId),
     setSyncSettings: (settings) => ipcRenderer.invoke("pfl:set-sync-settings", settings),
     syncOrders: (orders) => ipcRenderer.invoke("pfl:sync-orders", orders),
 });

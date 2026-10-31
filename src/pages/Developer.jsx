@@ -452,7 +452,7 @@ const Developer = () => {
                 className="field"
               />
             </label>
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 max-h-[32rem] space-y-2 overflow-y-auto overscroll-contain pr-2">
               {filteredMenuItems.map((item) => (
                 <div
                   key={item.id}

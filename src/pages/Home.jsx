@@ -42,7 +42,7 @@ const Home = () => {
             { label: "Customers", icon: FaUsers, path: "/customers" },
         ] : []),
         ...(currentUser?.role === "Admin" ? [
-            { label: "Network Sync", icon: FaWifi, path: "/settings" },
+            { label: "Network Sync", icon: FaWifi, path: "/network-sync" },
             { label: "Settings", icon: FaUtensils, path: "/admin-settings" },
             { label: "Developer Mode", icon: FaUtensils, path: "/developer" },
         ] : []),

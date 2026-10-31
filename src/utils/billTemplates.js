@@ -65,10 +65,14 @@ export const createBillTemplate = (overrides = {}) => ({
     thermalRightMargin: Math.min(5, Math.max(0, Number(overrides.thermalRightMargin ?? 2))),
     businessName: overrides.businessName ?? "Lassi Shop",
     businessNameSize: Math.min(32, Math.max(12, Number(overrides.businessNameSize) || 19)),
+    headerPhoneNumber: overrides.headerPhoneNumber ?? "9611648843",
+    fssaiText: overrides.fssaiText ?? "FASSAI",
+    footerPhone: overrides.footerPhone ?? "",
+    gstNumber: overrides.gstNumber ?? "",
     totalSize: Math.min(28, Math.max(12, Number(overrides.totalSize) || 17)),
     boldTotal: overrides.boldTotal !== false,
     logoDataUrl: typeof overrides.logoDataUrl === "string" ? overrides.logoDataUrl : "",
-    footerText: overrides.footerText ?? "Thank you for visiting us",
+    footerText: overrides.footerText ?? (overrides.id === "classic" ? "Thank You & Visit Again" : "Thank you for visiting us"),
     headerText: overrides.headerText ?? "",
     fields: { ...allFields, ...(overrides.fields || {}) },
     fieldLabels: { ...DEFAULT_FIELD_LABELS, ...(overrides.fieldLabels || {}) },
@@ -77,7 +81,7 @@ export const createBillTemplate = (overrides = {}) => ({
 });
 
 export const defaultBillTemplates = [
-    createBillTemplate({ id: "classic", name: "Classic 80mm", layout: "classic" }),
+    createBillTemplate({ id: "classic", name: "Photo-style cashier bill", layout: "lassi-shop" }),
     createBillTemplate({
         id: "kitchen-compact",
         kotTemplateVersion: 2,
@@ -136,6 +140,12 @@ export const defaultBillTemplates = [
 
 export const normalizeBillTemplate = (template, fallback = defaultBillTemplates[0]) => {
     const normalized = createBillTemplate({ ...fallback, ...(template || {}) });
+    if (template?.id === "classic" && template.layout === "classic") {
+        normalized.layout = "lassi-shop";
+        if (!template.footerText || template.footerText === "Thank you for visiting us") {
+            normalized.footerText = "Thank You & Visit Again";
+        }
+    }
     const savedOrder = Array.isArray(template?.fieldOrder) ? template.fieldOrder : [];
     const fieldOrder = savedOrder.includes("items")
         ? savedOrder

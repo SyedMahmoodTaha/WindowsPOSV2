@@ -2,7 +2,7 @@ import { FaArrowLeft } from "react-icons/fa6";
 import { FaEye, FaPrint } from "react-icons/fa6";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { printOrder, readOrders, updateOrder } from "../utils/orderStorage";
+import { printOrder, printTableTransfer, readOrders, updateOrder } from "../utils/orderStorage";
 import { readTablesAsync } from "../utils/catalog";
 
 const Tables = () => {
@@ -13,6 +13,10 @@ const Tables = () => {
     const [tables, setTables] = useState([]);
     const [settleOrder, setSettleOrder] = useState(null);
     const [paidAmount, setPaidAmount] = useState("");
+    const [transferOrder, setTransferOrder] = useState(null);
+    const [targetTable, setTargetTable] = useState("");
+    const [transferMessage, setTransferMessage] = useState("");
+    const [isTransferring, setIsTransferring] = useState(false);
     const handledSettlementId = useRef(null);
 
     useEffect(() => {
@@ -53,6 +57,49 @@ const Tables = () => {
     const orderForTable = (table) => orders.find((order) => order.orderType === "Table" && order.status !== "completed" && order.orderDetails?.tableNumber === table);
     const openTableOrder = (table) => navigate("/new-order", { state: { from: "/Tables", tableNumber: table } });
     const openOrderView = (order) => navigate("/new-order", { state: { from: "/Tables", existingOrder: order } });
+    const availableTransferTables = visibleTables.filter((table) => (
+        table !== transferOrder?.orderDetails?.tableNumber && !occupiedTables.has(table)
+    ));
+    const moveTableOrder = async () => {
+        if (!transferOrder || !targetTable || isTransferring) return;
+        const fromTable = transferOrder.orderDetails?.tableNumber;
+        const latestOrders = readOrders();
+        const currentOrder = latestOrders.find((order) => order.id === transferOrder.id && order.status !== "completed");
+        const destinationOccupied = latestOrders.some((order) => (
+            order.id !== transferOrder.id
+            && order.orderType === "Table"
+            && order.status !== "completed"
+            && order.orderDetails?.tableNumber === targetTable
+        ));
+        if (!currentOrder || !fromTable || destinationOccupied) {
+            setTransferMessage("This table order changed. Refresh the table list and try again.");
+            return;
+        }
+
+        setIsTransferring(true);
+        setTransferMessage("");
+        try {
+            const printed = await printTableTransfer(transferOrder, fromTable, targetTable);
+            if (!printed) {
+                setTransferMessage("Transfer slip was not printed. The order has not been moved.");
+                return;
+            }
+            updateOrder(transferOrder.id, {
+                orderType: "Table",
+                orderDetails: { ...(currentOrder.orderDetails || {}), tableNumber: targetTable },
+                temporaryTable: !tables.includes(targetTable),
+                updatedAt: new Date().toISOString(),
+            });
+            setTransferOrder(null);
+            setTargetTable("");
+            setOrders(readOrders());
+        } catch (error) {
+            console.error("Could not move table order", error);
+            setTransferMessage("Could not move this order. Please try again.");
+        } finally {
+            setIsTransferring(false);
+        }
+    };
     const completeSettlement = async (shouldPrint) => {
         if (!settleOrder) return;
 
@@ -101,6 +148,7 @@ const Tables = () => {
                             {occupiedTables.has(table) && <div className="absolute bottom-0 left-1/2 z-10 flex -translate-x-1/2 translate-y-1/2 overflow-hidden rounded-[10px] border border-black/20 bg-[#1f1f1f] shadow-lg">
                                 <button type="button" onClick={() => openOrderView(orderForTable(table))} className="flex size-8 items-center justify-center text-[#f5f5f5] hover:bg-[#d3d3d3] hover:text-[#1a1a1a] sm:size-9" aria-label={`View order for table ${table}`} title="View order"><FaEye /></button>
                                 <button type="button" onClick={() => printOrder(orderForTable(table), "kitchen")} className="flex size-8 items-center justify-center text-[#f5f5f5] hover:bg-[#d3d3d3] hover:text-[#1a1a1a] sm:size-9" aria-label={`Print order for table ${table}`} title="Print KOT"><FaPrint /></button>
+                                <button type="button" onClick={() => { setTransferOrder(orderForTable(table)); setTargetTable(""); setTransferMessage(""); }} className="px-2 text-[10px] font-semibold text-[#f5f5f5] hover:bg-[#3a3a3a] sm:text-xs" aria-label={`Move order from table ${table}`} title="Move table order">Move</button>
                                 <button type="button" onClick={() => { setSettleOrder(orderForTable(table)); setPaidAmount(""); }} className="rounded-r-[10px] bg-[#d3d3d3] px-2 text-[10px] font-semibold text-[#1a1a1a] hover:bg-white sm:px-3 sm:text-xs">Settle Bill</button>
                             </div>}
                         </div>
@@ -108,6 +156,7 @@ const Tables = () => {
                 </section>
             </div>
             {settleOrder && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"><section role="dialog" aria-modal="true" aria-labelledby="settlement-title" className="w-full max-w-md rounded-[20px] bg-[#2a2a2a] p-5"><div className="flex items-center justify-between"><div><p className="text-sm uppercase tracking-[0.16em] text-[#ababab]">Settle table {settleOrder.orderDetails?.tableNumber}</p><h2 id="settlement-title" className="text-2xl font-semibold">Bill {settleOrder.orderNumber}</h2></div><button type="button" onClick={() => { setSettleOrder(null); setPaidAmount(""); }} className="rounded-full p-2 text-xl text-[#ababab] hover:bg-[#3a3a3a]" aria-label="Close settlement">&times;</button></div><p className="mt-5 flex justify-between text-lg"><span>Total</span><strong>₹{Math.round(settleOrder.total)}</strong></p><label className="mt-5 grid gap-2 text-sm text-[#ababab]">Customer paid<input autoFocus type="text" inputMode="numeric" value={paidAmount} onChange={(event) => setPaidAmount(event.target.value.replace(/\D/g, ""))} className="field" /></label><p className="mt-4 flex justify-between rounded-[10px] bg-[#1f1f1f] px-3 py-3"><span>Return to customer</span><strong>₹{Math.round(changeDue)}</strong></p><div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3"><button type="button" onClick={() => { setSettleOrder(null); setPaidAmount(""); }} className="rounded-[10px] border border-[#555] px-3 py-3 text-sm font-semibold text-[#f5f5f5] hover:bg-[#3a3a3a]">Cancel</button><button type="button" onClick={() => completeSettlement(false)} className="rounded-[10px] bg-[#d3d3d3] px-3 py-3 text-sm font-semibold text-[#1a1a1a]">Complete</button><button type="button" onClick={() => completeSettlement(true)} className="rounded-[10px] bg-[#d3d3d3] px-3 py-3 text-sm font-semibold text-[#1a1a1a]">Save &amp; Print</button></div></section></div>}
+            {transferOrder && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"><section role="dialog" aria-modal="true" aria-labelledby="transfer-title" className="w-full max-w-md rounded-[20px] bg-[#2a2a2a] p-5"><div className="flex items-center justify-between"><div><p className="text-sm uppercase tracking-[0.16em] text-[#ababab]">Table {transferOrder.orderDetails?.tableNumber}</p><h2 id="transfer-title" className="text-2xl font-semibold">Move KOT</h2></div><button type="button" onClick={() => setTransferOrder(null)} className="rounded-full p-2 text-xl text-[#ababab] hover:bg-[#3a3a3a]" aria-label="Close table transfer">&times;</button></div><label className="mt-5 grid gap-2 text-sm text-[#ababab]">Move to table<select value={targetTable} onChange={(event) => setTargetTable(event.target.value)} className="field"><option value="">Select an available table</option>{availableTransferTables.map((table) => <option key={table} value={table}>{table}</option>)}</select></label><p className="mt-3 text-sm text-[#ababab]">A short transfer slip will print before the existing order moves.</p>{transferMessage && <p className="mt-3 text-sm text-[#f7d78c]" role="alert">{transferMessage}</p>}<div className="mt-5 grid grid-cols-2 gap-2"><button type="button" onClick={() => setTransferOrder(null)} className="rounded-[10px] border border-[#555] px-3 py-3 text-sm font-semibold text-[#f5f5f5] hover:bg-[#3a3a3a]">Cancel</button><button type="button" onClick={moveTableOrder} disabled={!targetTable || isTransferring} className="rounded-[10px] bg-[#d3d3d3] px-3 py-3 text-sm font-semibold text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-40">{isTransferring ? "Printing..." : "Print & Move"}</button></div></section></div>}
         </main>
     );
 };
