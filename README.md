@@ -7,7 +7,7 @@ This folder is structured as a standalone GitHub repository, following the deplo
 - `.github/workflows/windows-build.yml` builds and uploads both applications.
 - `doc/` contains architecture, design, and project notes.
 
-This folder name identifies the source project; it does not change the in-app version number. The POS and DB Viewer use the current V3 Windows feature source.
+This folder name identifies the source project; the POS package version is `2.2.2`. The POS and DB Viewer use the current Windows feature source.
 
 ## GitHub Actions build
 
@@ -24,9 +24,9 @@ Add these six repository secrets under **Settings > Secrets and variables > Acti
 | `VITE_CASHIER_USERNAME` | Cashier login |
 | `VITE_CASHIER_PASSWORD` | Cashier password |
 
-Push to `main` or `master`, or start **Windows Build** manually from the Actions tab. The workflow creates temporary `.env` files from those secrets and uploads two artifacts:
+Push to `main` or `master`, or start **Windows Build** manually from the Actions tab. The workflow creates temporary `.env` files from those secrets, verifies the packaged POS account configuration, and uploads two artifacts:
 
-- `lassi-shop-pos-windows` — portable POS executable only.
+- `lassi-shop-pos-windows-installer` — branded Windows x64 NSIS installer for the POS.
 - `lassi-shop-db-viewer-windows` — standalone DB Viewer installer (`.exe` only).
 
 To download the DB Viewer, open the completed **Windows Build** run in [GitHub Actions](https://github.com/SyedMahmoodTaha/WindowsPOSV2/actions/workflows/windows-build.yml), open that run's **Summary**, and select `lassi-shop-db-viewer-windows` under **Artifacts**. These are run artifacts, not files under the repository's **Releases** page; GitHub expires run artifacts after its retention period.
@@ -38,13 +38,13 @@ The DB Viewer accepts only the POS Admin account. Its Electron process enforces 
 Pushing the repository only creates new artifacts; it does not remotely install them on an existing POS.
 
 1. Close the POS and DB Viewer.
-2. Back up `%APPDATA%\Lassi Shop POS Windows\pfl.sqlite` before installing.
-3. Download the POS artifact from the successful Actions run and install the new version. If using the portable executable, close the old app and launch the new executable.
+2. Back up `%APPDATA%\Lassi Shop POS\pfl.sqlite` before installing.
+3. Download and run the POS installer from the successful Actions run.
 4. Install the DB Viewer artifact separately if needed.
 5. Launch the POS and verify the menu, orders, and settings. Then open the DB Viewer and sign in with the POS Admin account.
 6. Keep your database backup and previous installer until you confirm the update is working.
 
-The current POS source uses `%APPDATA%\Lassi Shop POS Windows\pfl.sqlite`, matching the WindowsPOSV1 database directory. Existing data in that directory should remain in place; do not delete the folder during an update.
+The current POS source stores its database and account/settings files under `%APPDATA%\Lassi Shop POS`. The previous WindowsPOSV2 database directory, `%APPDATA%\Lassi Shop POS Windows`, is not automatically migrated; back it up and explicitly plan any data migration before replacing an existing installation.
 
 ## Local development
 

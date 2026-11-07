@@ -36,7 +36,9 @@ const normalizeIdentifier = (value) => {
 
 const initializeDatabase = (app) => {
     if (sqliteDb) return sqliteDb;
-    sqliteDb = new Database(dbPath(app), { fileMustExist: false });
+    const databasePath = dbPath(app);
+    const shouldSeedDefaults = !fs.existsSync(databasePath);
+    sqliteDb = new Database(databasePath, { fileMustExist: false });
     sqliteDb.pragma("journal_mode = WAL");
     sqliteDb.exec(`
         CREATE TABLE IF NOT EXISTS categories (
@@ -84,9 +86,7 @@ const initializeDatabase = (app) => {
         );
     `);
     
-    // Populate default data if tables are empty
-    const itemCount = sqliteDb.prepare("SELECT COUNT(*) as count FROM items").get().count;
-    if (itemCount === 0) {
+    if (shouldSeedDefaults) {
         const insertCategory = sqliteDb.prepare("INSERT INTO categories (name) VALUES (?)");
         const insertMany = sqliteDb.transaction((rows) => rows.forEach((row) => insertCategory.run(row)));
         insertMany(defaultCatalog.categories);
@@ -116,6 +116,72 @@ const listDbTables = (app) => {
     return db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all().map((row) => row.name);
 };
 
+const getDatabaseSnapshot = (app) => {
+    const db = initializeDatabase(app);
+    return listDbTables(app).map((tableName) => ({
+        tableName,
+        rows: db.prepare(`SELECT * FROM "${normalizeIdentifier(tableName)}"`).all().map((row) => Object.fromEntries(
+            Object.entries(row).map(([key, value]) => [
+                key,
+                Buffer.isBuffer(value) ? { __pflBuffer__: value.toString("base64") } : value,
+            ]),
+        )),
+    }));
+};
+
+const replaceDatabaseSnapshot = (app, snapshot) => {
+    const db = initializeDatabase(app);
+    const currentTables = listDbTables(app);
+    if (!Array.isArray(snapshot) || snapshot.length !== currentTables.length) {
+        throw new Error("The sync host sent an incomplete database snapshot.");
+    }
+
+    const rowsByTable = new Map();
+    for (const table of snapshot) {
+        const tableName = normalizeIdentifier(table?.tableName);
+        if (!tableName || !currentTables.includes(tableName) || rowsByTable.has(tableName) || !Array.isArray(table.rows)) {
+            throw new Error("The sync host sent an invalid database table.");
+        }
+        rowsByTable.set(tableName, table.rows);
+    }
+    if (currentTables.some((tableName) => !rowsByTable.has(tableName))) {
+        throw new Error("The sync host sent an incomplete database snapshot.");
+    }
+
+    db.transaction(() => {
+        for (const tableName of currentTables) {
+            const columns = db.prepare(`PRAGMA table_info("${tableName}")`).all().map((column) => column.name);
+            if (columns.some((column) => !normalizeIdentifier(column))) {
+                throw new Error(`The database schema for ${tableName} is invalid.`);
+            }
+            const rows = rowsByTable.get(tableName);
+            for (const row of rows) {
+                if (!row || typeof row !== "object" || Array.isArray(row)
+                    || columns.some((column) => !Object.hasOwn(row, column))
+                    || Object.keys(row).some((column) => !columns.includes(column))) {
+                    throw new Error(`The sync host sent an invalid row for ${tableName}.`);
+                }
+            }
+
+            db.prepare(`DELETE FROM "${tableName}"`).run();
+            if (!rows.length) continue;
+
+            const insert = db.prepare(
+                `INSERT INTO "${tableName}" (${columns.map((column) => `"${column}"`).join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`,
+            );
+            for (const row of rows) {
+                insert.run(...columns.map((column) => {
+                    const value = row[column];
+                    return value && typeof value === "object" && !Array.isArray(value)
+                        && Object.keys(value).length === 1 && typeof value.__pflBuffer__ === "string"
+                        ? Buffer.from(value.__pflBuffer__, "base64")
+                        : value;
+                }));
+            }
+        }
+    })();
+};
+
 const getCatalogFromDb = (app) => {
     const db = initializeDatabase(app);
     const categories = db.prepare("SELECT name FROM categories ORDER BY name").all().map((row) => row.name);
@@ -133,7 +199,7 @@ const getCatalogFromDb = (app) => {
         })(),
     }));
 
-    return { categories: categories.length ? categories : defaultCatalog.categories, menuItems: menuItems.length ? menuItems : defaultCatalog.menuItems };
+    return { categories, menuItems };
 };
 
 const saveCatalogToDb = (app, catalog) => {
@@ -371,6 +437,8 @@ module.exports = {
     defaultCatalog,
     initializeDatabase,
     listDbTables,
+    getDatabaseSnapshot,
+    replaceDatabaseSnapshot,
     getCatalogFromDb,
     saveCatalogToDb,
     getTableNamesFromDb,

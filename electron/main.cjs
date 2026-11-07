@@ -10,6 +10,8 @@ const {
     initializeDatabase,
     defaultCatalog,
     listDbTables,
+    getDatabaseSnapshot,
+    replaceDatabaseSnapshot,
     getCatalogFromDb,
     saveCatalogToDb,
     getTableNamesFromDb,
@@ -40,6 +42,25 @@ const configuredAccounts = [
     { name: process.env.VITE_ADMIN_NAME, username: process.env.VITE_ADMIN_USERNAME, password: process.env.VITE_ADMIN_PASSWORD, role: "Admin" },
 ];
 const authenticatedUsers = new Map();
+const syncPasswordHashCache = new Map();
+const passwordHashForSync = (username, password) => {
+    const key = `${username}\0${crypto.createHash("sha256").update(String(password)).digest("hex")}`;
+    if (!syncPasswordHashCache.has(key)) {
+        const salt = crypto.randomBytes(16);
+        const derived = crypto.scryptSync(String(password), salt, 64);
+        syncPasswordHashCache.set(key, `scrypt$${salt.toString("hex")}$${derived.toString("hex")}`);
+    }
+    return syncPasswordHashCache.get(key);
+};
+const passwordMatches = (password, account) => {
+    if (typeof account?.passwordHash !== "string") return account?.password === password;
+    const match = account.passwordHash.match(/^scrypt\$([a-f0-9]{32})\$([a-f0-9]{128})$/i);
+    if (!match) return false;
+    const [, saltHex, hashHex] = match;
+    const expected = Buffer.from(hashHex, "hex");
+    const actual = crypto.scryptSync(String(password), Buffer.from(saltHex, "hex"), expected.length);
+    return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+};
 
 const sharedUserDataDir = path.join(app.getPath("appData"), "Lassi Shop POS");
 fs.mkdirSync(sharedUserDataDir, { recursive: true });
@@ -90,7 +111,14 @@ const readUsers = () => {
         });
         return configuredUsers.concat(storedUsers.filter((stored) => !configuredAccounts.some((configured) => stored.originalUsername === configured.username || stored.username === configured.username)));
     } catch (error) {
-        if (error.code !== "ENOENT") console.error("Could not read users.json:", error.message);
+        if (error.code === "ENOENT") {
+            const initialUsers = configuredAccounts
+                .filter((user) => user.name && user.username && user.password)
+                .map((user) => ({ ...user, originalUsername: user.username }));
+            writeUsers(initialUsers);
+            return initialUsers;
+        }
+        console.error("Could not read users.json:", error.message);
         return configuredAccounts;
     }
 };
@@ -99,7 +127,7 @@ const writeUsers = (users) => {
     const targetPath = usersPath();
     const temporaryPath = `${targetPath}.tmp`;
     try {
-        fs.writeFileSync(temporaryPath, JSON.stringify(users, null, 2), "utf8");
+        fs.writeFileSync(temporaryPath, JSON.stringify(users, null, 2), { encoding: "utf8", mode: 0o600 });
         fs.renameSync(temporaryPath, targetPath);
         return users;
     } catch (error) {
@@ -112,6 +140,11 @@ const requireAuthenticatedUser = (event, roles) => {
     if (!user) throw new Error("Sign in is required for this operation.");
     if (roles && !roles.includes(user.role)) throw new Error("Your account is not permitted to perform this operation.");
     return user;
+};
+const requireSyncHost = () => {
+    if (readSyncSettings().mode === "client") {
+        throw new Error("Make database viewer changes on the sync host.");
+    }
 };
 const canManageUserTarget = (currentUser, target) => {
     if (currentUser.role === "Admin") return true;
@@ -128,6 +161,9 @@ const publicUser = (user) => ({
 });
 const setManagedUsers = (event, users) => {
     const currentUser = requireAuthenticatedUser(event, ["Admin", "Manager", "Assistant Manager"]);
+    if (readSyncSettings().mode === "client") {
+        throw new Error("Manage staff accounts on the sync host. Changes will be available on this device after it reconnects.");
+    }
     if (!Array.isArray(users)) throw new Error("Users must be a list.");
     const existingUsers = readUsers();
 
@@ -145,6 +181,7 @@ const setManagedUsers = (event, users) => {
         writeUsers(updatedUsers);
         const updatedCurrentUser = updatedUsers.find((user) => user.originalUsername === currentUser.username || user.username === currentUser.username);
         if (updatedCurrentUser) authenticatedUsers.set(event.sender.id, { username: updatedCurrentUser.username, role: updatedCurrentUser.role });
+        broadcastSyncState();
         return updatedUsers.map(publicUser);
     }
 
@@ -170,6 +207,7 @@ const setManagedUsers = (event, users) => {
     });
     if (!passwordChanged) throw new Error("Enter a new password.");
     writeUsers(updatedUsers);
+    broadcastSyncState();
     return manageableUsers.map((target) => {
         const updated = updatedUsers.find((candidate) => (candidate.originalUsername || candidate.username) === (target.originalUsername || target.username));
         return publicUser(updated);
@@ -233,7 +271,7 @@ const defaultReceiptOptions = {
 
 const defaultBillTemplates = [
     { id: "classic", name: "Photo-style cashier bill", layout: "lassi-shop", paperWidth: 80, alignment: "center", businessName: "Lassi Shop", headerPhoneNumber: "9611648843", fssaiText: "FASSAI", footerPhone: "", gstNumber: "", footerText: "Thank You & Visit Again", headerText: "", fields: defaultReceiptOptions },
-    { id: "kitchen-compact", kotTemplateVersion: 2, name: "Kitchen KOT 58mm", layout: "kot", paperWidth: 58, alignment: "center", dividerStyle: "dotted", fontFamily: "verdana", fontSize: 14, titleSize: 16, businessNameSize: 14, horizontalPaddingMm: 3, kotBottomFeedLines: 0, businessName: "Lassi Shop", footerText: "", headerText: "", fields: { ...defaultReceiptOptions, logo: false, customerName: true, phone: false, address: false, deliveryCharges: false, parcelCharges: false, subtotal: false, itemPrice: false, total: false, discount: false, footer: false, dateTime: true, billNumber: true, billType: true, cashierName: false, tableNumber: true, businessName: true }, fieldOrder: ["dateTime", "billNumber", "billType", "divider:kot-customer", "customerName", "tableNumber", "businessName", "divider:kot-items", "items", "divider:kot-notes", "note"], dividers: [{ id: "kot-customer", label: "" }, { id: "kot-items", label: "" }, { id: "kot-notes", label: "" }], fieldLabels: { dateTime: "", billNumber: "KOT -", billType: "", customerName: "Name", businessName: "Biller", tableNumber: "Table No", item: "Item", quantity: "Qty.", note: "Customer Notes" } },
+    { id: "kitchen-compact", kotTemplateVersion: 3, paperWidthVersion: 1, name: "Kitchen KOT 80mm", layout: "kot", paperWidth: 80, alignment: "center", dividerStyle: "dotted", fontFamily: "verdana", fontSize: 14, titleSize: 16, businessNameSize: 14, horizontalPaddingMm: 8, kotBottomFeedLines: 2, contentPadding: 12, rowSpacing: 4, cellPadding: 4, itemNameWidth: 54, quantityWidth: 16, thermalRightMargin: 3, totalSize: 17, businessName: "Lassi Shop", footerText: "", headerText: "", fields: { ...defaultReceiptOptions, logo: false, customerName: true, phone: false, address: false, deliveryCharges: false, parcelCharges: false, subtotal: false, itemPrice: false, total: false, discount: false, footer: false, dateTime: true, billNumber: true, billType: true, cashierName: false, tableNumber: true, businessName: true }, fieldOrder: ["dateTime", "billNumber", "billType", "divider:kot-customer", "customerName", "tableNumber", "businessName", "divider:kot-items", "items", "divider:kot-notes", "note"], dividers: [{ id: "kot-customer", label: "" }, { id: "kot-items", label: "" }, { id: "kot-notes", label: "" }], fieldLabels: { dateTime: "", billNumber: "KOT -", billType: "", customerName: "Name", businessName: "Biller", tableNumber: "Table No", item: "Item", quantity: "Qty.", note: "Customer Notes" } },
     { id: "minimal", name: "Minimal receipt", layout: "minimal", paperWidth: 80, alignment: "center", businessName: "Lassi Shop", footerText: "Thank you for visiting us", headerText: "", fields: { ...defaultReceiptOptions, logo: false, address: false, note: false, footer: false } },
     { id: "customer", name: "Customer details", layout: "customer", paperWidth: 80, alignment: "center", businessName: "Lassi Shop", footerText: "Thank you for visiting us", headerText: "Freshly prepared for you", fields: defaultReceiptOptions },
 ];
@@ -246,29 +284,43 @@ const normalizeReceiptOptions = (value = {}) => ({
 const normalizeBillTemplates = (value) => {
     if (!Array.isArray(value) || value.length === 0) return defaultBillTemplates;
     const templates = value.map((template) => {
-        const saved = template && typeof template === "object" ? template : {};
+        let saved = template && typeof template === "object" ? template : {};
         const defaultKot = defaultBillTemplates.find((entry) => entry.id === "kitchen-compact");
-        if (saved.id === "kitchen-compact" && !(Number(saved.kotTemplateVersion) >= 2)) {
+        if (saved.id === "kitchen-compact" && !(Number(saved.kotTemplateVersion) >= 3)) {
             const previousDefaultOrder = ["dateTime", "billNumber", "billType", "customerName", "tableNumber", "divider:kot-biller", "businessName", "divider:kot-items", "items", "divider:kot-notes", "note"];
             const usesPreviousDefaultOrder = !Array.isArray(saved.fieldOrder)
                 || JSON.stringify(saved.fieldOrder) === JSON.stringify(previousDefaultOrder);
-            return {
+            const migratedName = saved.name === "Kitchen KOT 58mm" ? defaultKot.name : (saved.name || defaultKot.name);
+            saved = {
                 ...saved,
                 ...defaultKot,
                 ...saved,
-                name: saved.name || defaultKot.name,
+                name: migratedName,
+                paperWidth: 80,
+                paperWidthVersion: 1,
                 businessName: saved.businessName || defaultKot.businessName,
                 fields: { ...defaultKot.fields, ...saved.fields },
                 fieldLabels: { ...defaultKot.fieldLabels, ...saved.fieldLabels },
                 fieldOrder: usesPreviousDefaultOrder ? defaultKot.fieldOrder : saved.fieldOrder || defaultKot.fieldOrder,
                 dividers: usesPreviousDefaultOrder ? defaultKot.dividers : saved.dividers || defaultKot.dividers,
-                kotTemplateVersion: 2,
+                kotTemplateVersion: 3,
             };
+            const defaultsByVersion = {
+                fontSize: [14, 14], titleSize: [16, 16], lineHeight: [1.35, 1.35],
+                contentPadding: [8, 12], rowSpacing: [4, 4], cellPadding: [4, 4],
+                itemNameWidth: [54, 54], quantityWidth: [16, 16], thermalRightMargin: [2, 3],
+                horizontalPaddingMm: [3, 8], kotBottomFeedLines: [0, 2],
+                businessNameSize: [14, 14], totalSize: [17, 17],
+            };
+            for (const [key, [oldValue, newValue]] of Object.entries(defaultsByVersion)) {
+                if (template?.[key] === undefined || Number(template[key]) === oldValue) saved[key] = newValue;
+            }
         }
         const normalized = {
             ...defaultBillTemplates[0],
             ...saved,
-            paperWidth: Number(saved.paperWidth) || 80,
+            paperWidth: Number(saved.paperWidthVersion) >= 1 && Number(saved.paperWidth) === 58 ? 58 : 80,
+            paperWidthVersion: 1,
             fields: normalizeReceiptOptions(saved.fields),
         };
         if (saved.id === "classic" && saved.layout === "classic") {
@@ -397,7 +449,7 @@ const createEscPosReceipt = (order, destination, template) => {
     const escText = (text, size = fontSize, shouldBold = true) => `\x1b\x21${String.fromCharCode(textMode(size) | (shouldBold ? 0x08 : 0x00))}${text}\x1b\x21\x00`;
     const bold = (text, size = fontSize) => escText(text, size, true);
     const alignment = template?.alignment || "center";
-    const padding = isKotTemplate ? 0 : Math.min(4, Math.max(0, Math.floor(Number(template?.contentPadding || 0) / 3)));
+    const padding = isKotTemplate ? 0 : Math.min(4, Math.max(0, Math.floor(Number(template?.contentPadding || 0) / 6)));
     const wrapText = (value, maxWidth) => {
         const lines = [];
         for (const paragraph of String(value ?? "").split(/\r?\n/)) {
@@ -487,6 +539,9 @@ const createEscPosReceipt = (order, destination, template) => {
         if (fields.address && address) add(leftRight("Addr:", address));
         if (fields.customerName || fields.phone || (fields.address && address)) add(dashLine);
         if (fields.dateTime || fields.billType) add(leftRight(fields.dateTime ? `Date: ${dateText}` : "", fields.billType ? typeText : ""));
+        if (order.orderType === "Table" && fields.tableNumber && (order.orderDetails?.tableNumber || order.tableNumber)) {
+            add(leftRight("Table:", order.orderDetails?.tableNumber || order.tableNumber));
+        }
         if (fields.cashierName || fields.billNumber) {
             add(leftRight(
                 fields.cashierName ? `Cashier: ${cashierName}` : "",
@@ -690,6 +745,166 @@ const sendSyncMessage = (socket, message) => {
     if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
 };
 
+const createSyncSnapshot = (ackUpdateId = "") => {
+    const printerSettings = readPrinterSettings();
+    const databaseTables = getDatabaseSnapshot(app).map((table) => table.tableName === "users"
+        ? {
+            ...table,
+            rows: table.rows.map((row) => ({
+                ...row,
+                password: typeof row.password === "string" && /^scrypt\$[a-f0-9]{32}\$[a-f0-9]{128}$/i.test(row.password)
+                    ? row.password
+                    : passwordHashForSync(row.username || "", row.password || ""),
+            })),
+        }
+        : table);
+    return {
+        type: "sync-state",
+        version: 1,
+        syncedAt: new Date().toISOString(),
+        ...(ackUpdateId ? { ackUpdateId } : {}),
+        databaseTables,
+        catalog: getCatalogFromDb(app),
+        tables: getTableNamesFromDb(app),
+        orders: getOrdersFromDb(app),
+        users: readUsers().map((user) => ({
+            name: user.name,
+            username: user.username,
+            role: user.role,
+            originalUsername: user.originalUsername || user.username,
+            passwordHash: user.passwordHash || passwordHashForSync(user.username, user.password),
+        })),
+        printerSettings: {
+            receiptOptions: printerSettings.receiptOptions,
+            billTemplates: printerSettings.billTemplates,
+            selectedBillTemplateId: printerSettings.selectedBillTemplateId,
+            selectedBillTemplateIds: printerSettings.selectedBillTemplateIds,
+            printCashierToKitchen: printerSettings.printCashierToKitchen,
+        },
+    };
+};
+
+const applySyncSnapshot = (snapshot) => {
+    const settings = readSyncSettings();
+    if (!settings.enabled || settings.mode !== "client") throw new Error("Only an enabled sync client can apply host data.");
+    if (snapshot?.type !== "sync-state" || snapshot.version !== 1
+        || !Array.isArray(snapshot.databaseTables)
+        || !Array.isArray(snapshot.users)
+        || !Array.isArray(snapshot.printerSettings?.billTemplates)) {
+        throw new Error("The sync host sent an invalid POS data snapshot.");
+    }
+
+    const users = snapshot.users.map((user) => {
+        if (!user || typeof user.name !== "string" || typeof user.username !== "string"
+            || typeof user.role !== "string" || !/^scrypt\$[a-f0-9]{32}\$[a-f0-9]{128}$/i.test(user.passwordHash || "")) {
+            throw new Error("The sync host sent an invalid user account.");
+        }
+        return {
+            name: user.name,
+            username: user.username,
+            role: user.role,
+            originalUsername: user.originalUsername || user.username,
+            passwordHash: user.passwordHash,
+        };
+    });
+
+    replaceDatabaseSnapshot(app, snapshot.databaseTables);
+    writeUsers(users);
+    for (const [senderId, currentUser] of authenticatedUsers.entries()) {
+        const updatedUser = users.find((user) => user.originalUsername === currentUser.username || user.username === currentUser.username);
+        if (updatedUser) authenticatedUsers.set(senderId, { username: updatedUser.username, role: updatedUser.role });
+        else authenticatedUsers.delete(senderId);
+    }
+
+    const localPrinterSettings = readPrinterSettings();
+    writePrinterSettings({
+        ...snapshot.printerSettings,
+        kitchen: localPrinterSettings.kitchen,
+        cashier: localPrinterSettings.cashier,
+    });
+    return createSyncSnapshot();
+};
+
+const sendSyncSnapshot = (socket) => sendSyncMessage(socket, createSyncSnapshot());
+
+const notifyMainWindowOfSync = (snapshot) => {
+    if (posWindow && !posWindow.isDestroyed()) posWindow.webContents.send("pfl:sync-state", snapshot);
+};
+
+const broadcastSyncState = (ackUpdateId = "") => {
+    if (!syncWebSocketServer) return;
+    const snapshot = createSyncSnapshot(ackUpdateId);
+    const payload = JSON.stringify(snapshot);
+    for (const socket of [...syncClients]) {
+        if (socket.readyState === WebSocket.OPEN) socket.send(payload);
+    }
+};
+
+const applyClientSyncUpdate = (payload) => {
+    if (payload?.type === "orders-sync" && Array.isArray(payload.orders)) {
+        const currentOrders = getOrdersFromDb(app);
+        const deletedOrderIds = new Set(
+            Array.isArray(payload.deletedOrderIds)
+                ? payload.deletedOrderIds.filter((id) => typeof id === "string" || typeof id === "number").map(String)
+                : [],
+        );
+        const currentOrdersById = new Map(currentOrders
+            .filter((order) => order?.id !== undefined && order?.id !== null)
+            .map((order) => [String(order.id), order]));
+        const incomingOrdersById = new Map();
+        for (const order of payload.orders) {
+            if (order?.id === undefined || order?.id === null) continue;
+            const key = String(order.id);
+            const current = currentOrdersById.get(key);
+            const incomingVersion = Date.parse(order.updatedAt || order.createdAt || "") || 0;
+            const currentVersion = Date.parse(current?.updatedAt || current?.createdAt || "") || 0;
+            incomingOrdersById.set(key, current && currentVersion > incomingVersion ? current : order);
+        }
+        const mergedOrders = [
+            ...incomingOrdersById.values(),
+            ...currentOrders.filter((order) => order?.id !== undefined && order?.id !== null
+                && !incomingOrdersById.has(String(order.id)) && !deletedOrderIds.has(String(order.id))),
+        ];
+        saveOrdersToDb(app, mergedOrders);
+    } else if (payload?.type === "catalog-sync"
+        && Array.isArray(payload.catalog?.categories)
+        && Array.isArray(payload.catalog?.menuItems)) {
+        saveCatalogToDb(app, payload.catalog);
+    } else if (payload?.type === "tables-sync" && Array.isArray(payload.tables)) {
+        saveTablesToDb(app, payload.tables);
+    } else if (payload?.type === "customer-notes-sync"
+        && typeof payload.customerId === "string"
+        && payload.customerId.startsWith("phone:")
+        && typeof payload.notes === "string"
+        && payload.notes.length <= 3000) {
+        updateCustomerNotesInDb(app, payload.customerId, payload.notes);
+    } else if (payload?.type === "printer-settings-sync"
+        && payload.settings && typeof payload.settings === "object") {
+        const current = readPrinterSettings();
+        writePrinterSettings({
+            ...payload.settings,
+            kitchen: current.kitchen,
+            cashier: current.cashier,
+        });
+    } else {
+        return false;
+    }
+
+    const snapshot = createSyncSnapshot(payload.updateId);
+    const serialized = JSON.stringify(snapshot);
+    for (const socket of [...syncClients]) {
+        if (socket.readyState === WebSocket.OPEN) socket.send(serialized);
+    }
+    if (payload.type === "orders-sync") {
+        broadcastOrdersToClients(payload.orders);
+        if (posWindow && !posWindow.isDestroyed()) {
+            posWindow.webContents.send("pfl:orders-synced", payload.orders);
+        }
+    }
+    notifyMainWindowOfSync(snapshot);
+    return true;
+};
+
 const authorizeSyncClient = (socket, client, token) => {
     syncClients.add(socket);
     syncClientDetails.set(socket, {
@@ -699,7 +914,7 @@ const authorizeSyncClient = (socket, client, token) => {
         connectedAt: new Date().toISOString(),
     });
     sendSyncMessage(socket, { type: "sync-authorized", clientId: client.id, ...(token ? { token } : {}) });
-    sendSyncMessage(socket, { type: "orders-sync", orders: getOrdersFromDb(app), syncedAt: new Date().toISOString() });
+    sendSyncSnapshot(socket);
 };
 
 const startSyncServer = () => {
@@ -762,17 +977,9 @@ const startSyncServer = () => {
                     return;
                 }
 
-                if (payload?.type === "orders-sync" && Array.isArray(payload.orders)) {
-                    const nextOrders = payload.orders;
-                    saveOrdersToDb(app, nextOrders);
-                    broadcastOrdersToClients(nextOrders);
-                    if (posWindow && !posWindow.isDestroyed()) {
-                        posWindow.webContents.send("pfl:orders-synced", nextOrders);
-                    }
-                    return;
-                }
+                if (applyClientSyncUpdate(payload)) return;
             } catch (error) {
-                console.error("Could not process synced orders:", error);
+                console.error("Could not process synced POS data:", error);
             }
         });
         socket.on("close", () => {
@@ -909,8 +1116,14 @@ const printOrder = async (event, { html, order, destination }) => {
 };
 
 app.whenReady().then(() => {
+    app.setName("Lassi Shop POS");
+    if (process.platform === "darwin" && app.dock) {
+        const iconPath = path.join(app.getAppPath(), "build", "app-icon.png");
+        app.dock.setIcon(nativeImage.createFromPath(iconPath));
+    }
+
     ipcMain.handle("pfl:authenticate", (event, { username, password }) => {
-        const account = readUsers().find((candidate) => candidate.username === username && candidate.password === password);
+        const account = readUsers().find((candidate) => candidate.username === username && passwordMatches(password, candidate));
         if (!account) {
             authenticatedUsers.delete(event.sender.id);
             return null;
@@ -939,15 +1152,19 @@ app.whenReady().then(() => {
         const cashier = saved.cashier || await resolvePrinterSetting(event, "cashier");
         return { kitchen, cashier, receiptOptions: saved.receiptOptions, billTemplates: saved.billTemplates, selectedBillTemplateId: saved.selectedBillTemplateId, selectedBillTemplateIds: saved.selectedBillTemplateIds, printCashierToKitchen: saved.printCashierToKitchen };
     });
-    ipcMain.handle("pfl:set-printer-settings", (event, settings) => writePrinterSettings({
-        kitchen: settings?.kitchen || "",
-        cashier: settings?.cashier || "",
-        receiptOptions: settings?.receiptOptions || settings?.options || {},
-        billTemplates: settings?.billTemplates,
-        selectedBillTemplateId: settings?.selectedBillTemplateId,
-        selectedBillTemplateIds: settings?.selectedBillTemplateIds,
-        printCashierToKitchen: settings?.printCashierToKitchen,
-    }));
+    ipcMain.handle("pfl:set-printer-settings", (event, settings) => {
+        const saved = writePrinterSettings({
+            kitchen: settings?.kitchen || "",
+            cashier: settings?.cashier || "",
+            receiptOptions: settings?.receiptOptions || settings?.options || {},
+            billTemplates: settings?.billTemplates,
+            selectedBillTemplateId: settings?.selectedBillTemplateId,
+            selectedBillTemplateIds: settings?.selectedBillTemplateIds,
+            printCashierToKitchen: settings?.printCashierToKitchen,
+        });
+        if (readSyncSettings().mode !== "client") broadcastSyncState();
+        return saved;
+    });
     ipcMain.handle("pfl:export-sales-report", async (event, payload = {}) => {
         requireAuthenticatedUser(event, ["Admin"]);
         try {
@@ -988,16 +1205,26 @@ app.whenReady().then(() => {
         }
     });
     ipcMain.handle("pfl:get-catalog", () => getCatalogFromDb(app));
-    ipcMain.handle("pfl:save-catalog", saveCatalogWithRole);
+    ipcMain.handle("pfl:save-catalog", (event, catalog) => {
+        const saved = saveCatalogWithRole(event, catalog);
+        if (readSyncSettings().mode !== "client") broadcastSyncState();
+        return saved;
+    });
     ipcMain.handle("pfl:get-tables", () => getTableNamesFromDb(app));
     ipcMain.handle("pfl:save-tables", (event, tables) => {
         requireAuthenticatedUser(event, ["Admin"]);
-        return saveTablesToDb(app, tables);
+        const saved = saveTablesToDb(app, tables);
+        if (readSyncSettings().mode !== "client") broadcastSyncState();
+        return saved;
     });
     ipcMain.handle("pfl:get-orders", () => getOrdersFromDb(app));
-    ipcMain.handle("pfl:save-orders", (event, orders) => saveOrdersToDb(app, orders));
+    ipcMain.handle("pfl:save-orders", (event, orders) => {
+        const saved = saveOrdersToDb(app, orders);
+        if (readSyncSettings().mode !== "client") broadcastSyncState();
+        return saved;
+    });
     ipcMain.handle("pfl:get-customers", (event) => {
-        const user = requireAuthenticatedUser(event, ["Admin", "Manager"]);
+        const user = requireAuthenticatedUser(event, ["Admin", "Manager", "Assistant Manager"]);
         return getCustomersFromDb(app, { includeFinancial: user.role === "Admin" });
     });
     ipcMain.handle("pfl:get-customer-by-phone", (event, phone) => {
@@ -1005,10 +1232,12 @@ app.whenReady().then(() => {
         return getCustomerByPhoneFromDb(app, phone);
     });
     ipcMain.handle("pfl:save-customer-notes", (event, { customerId, notes } = {}) => {
-        requireAuthenticatedUser(event, ["Admin", "Manager"]);
+        requireAuthenticatedUser(event, ["Admin", "Manager", "Assistant Manager"]);
         if (typeof customerId !== "string" || !customerId.startsWith("phone:")) throw new Error("Invalid customer identifier.");
         if (typeof notes !== "string" || notes.length > 3000) throw new Error("Customer notes must be 3000 characters or fewer.");
-        return updateCustomerNotesInDb(app, customerId, notes);
+        const saved = updateCustomerNotesInDb(app, customerId, notes);
+        if (readSyncSettings().mode !== "client") broadcastSyncState();
+        return saved;
     });
     ipcMain.handle("pfl:prepare-clean-windows-data", () => prepareCleanWindowsData(app));
     ipcMain.handle("pfl:open-db-viewer-window", (event) => {
@@ -1024,6 +1253,7 @@ app.whenReady().then(() => {
         return getDbTableData(app, tableName);
     });
     ipcMain.handle("pfl:get-sync-settings", () => readSyncSettings());
+    ipcMain.handle("pfl:apply-sync-state", (event, snapshot) => applySyncSnapshot(snapshot));
     ipcMain.handle("pfl:get-sync-status", (event) => {
         requireAuthenticatedUser(event, ["Admin"]);
         const settings = readSyncSettings();
@@ -1074,12 +1304,9 @@ app.whenReady().then(() => {
         request.socket.on("message", (raw) => {
             try {
                 const payload = JSON.parse(raw.toString());
-                if (payload?.type !== "orders-sync" || !Array.isArray(payload.orders)) return;
-                saveOrdersToDb(app, payload.orders);
-                broadcastOrdersToClients(payload.orders);
-                if (posWindow && !posWindow.isDestroyed()) posWindow.webContents.send("pfl:orders-synced", payload.orders);
+                applyClientSyncUpdate(payload);
             } catch (error) {
-                console.error("Could not process approved client orders:", error);
+                console.error("Could not process approved client POS data:", error);
             }
         });
         const details = {
@@ -1091,7 +1318,7 @@ app.whenReady().then(() => {
         syncClients.add(request.socket);
         syncClientDetails.set(request.socket, details);
         sendSyncMessage(request.socket, { type: "sync-authorized", clientId: client.id, token });
-        sendSyncMessage(request.socket, { type: "orders-sync", orders: getOrdersFromDb(app), syncedAt: new Date().toISOString() });
+        sendSyncSnapshot(request.socket);
         return true;
     });
     ipcMain.handle("pfl:reject-sync-client", (event, requestId) => {
@@ -1141,24 +1368,33 @@ app.whenReady().then(() => {
     });
     ipcMain.handle("pfl:insert-db-row", (event, payload) => {
         requireAuthenticatedUser(event, ["Admin"]);
+        requireSyncHost();
         try {
-            return insertDbRow(app, payload || {});
+            const result = insertDbRow(app, payload || {});
+            broadcastSyncState();
+            return result;
         } catch (error) {
             return { ok: false, error: error.message };
         }
     });
     ipcMain.handle("pfl:update-db-row", (event, payload) => {
         requireAuthenticatedUser(event, ["Admin"]);
+        requireSyncHost();
         try {
-            return updateDbRow(app, payload || {});
+            const result = updateDbRow(app, payload || {});
+            broadcastSyncState();
+            return result;
         } catch (error) {
             return { ok: false, error: error.message };
         }
     });
     ipcMain.handle("pfl:delete-db-row", (event, payload) => {
         requireAuthenticatedUser(event, ["Admin"]);
+        requireSyncHost();
         try {
-            return deleteDbRow(app, payload || {});
+            const result = deleteDbRow(app, payload || {});
+            broadcastSyncState();
+            return result;
         } catch (error) {
             return { ok: false, error: error.message };
         }

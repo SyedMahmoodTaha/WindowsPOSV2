@@ -39,4 +39,10 @@ contextBridge.exposeInMainWorld("pflDesktop", {
     revokeSyncClient: (clientId) => ipcRenderer.invoke("pfl:revoke-sync-client", clientId),
     setSyncSettings: (settings) => ipcRenderer.invoke("pfl:set-sync-settings", settings),
     syncOrders: (orders) => ipcRenderer.invoke("pfl:sync-orders", orders),
+    applySyncState: (snapshot) => ipcRenderer.invoke("pfl:apply-sync-state", snapshot),
+    onSyncState: (callback) => {
+        const listener = (_event, snapshot) => callback(snapshot);
+        ipcRenderer.on("pfl:sync-state", listener);
+        return () => ipcRenderer.removeListener("pfl:sync-state", listener);
+    },
 });

@@ -10,8 +10,8 @@
     "build": "vite build",
     "desktop": "npm run build && electron .",
     "db": "npm run build && electron . --db-viewer",
-    "desktop:win": "npm run dist && node -e \"const fs=require('fs'); const path=require('path'); const cp=require('child_process'); const base='release'; const candidates=[]; const walk=(dir)=>{for (const entry of fs.readdirSync(dir,{withFileTypes:true})) { const full=path.join(dir,entry.name); if (entry.isDirectory()) { walk(full); } else if (entry.name.toLowerCase() === 'lassi shop pos.exe') { candidates.push(full); }}}; if (fs.existsSync(base)) walk(base); const exe=candidates.find((p)=>fs.existsSync(p)); if (!exe) { const portable=path.join(base,'Lassi Shop POS.exe'); if (fs.existsSync(portable)) { console.log('Launching:', portable); cp.spawn(portable,{stdio:'inherit',shell:false}); process.exit(0); } console.error('Windows executable not found in release/.'); process.exit(1); } console.log('Launching:', exe); cp.spawn(exe,{stdio:'inherit',shell:false});\"",
-    "dist": "npm run build && electron-builder --win portable --x64",
+    "desktop:win": "npm run build && electron-builder --win dir --x64 && node -e \"const fs=require('node:fs'); const cp=require('node:child_process'); const exe='release/win-unpacked/Lassi Shop POS.exe'; if (!fs.existsSync(exe)) { console.error('Windows app executable not found in release/win-unpacked/.'); process.exit(1); } console.log('Launching:', exe); cp.spawn(exe,{stdio:'inherit',shell:false});\"",
+    "dist": "npm run build && electron-builder --win nsis --x64",
     "lint": "oxlint",
     "preview": "vite preview"
   },
@@ -45,6 +45,7 @@
     },
     "files": [
       "dist/**/*",
+      "build/app-icon.png",
       "electron/*.cjs",
       "node_modules/better-sqlite3/**/*"
     ],
@@ -55,16 +56,24 @@
       }
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": [
-        "nsis",
         {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
+          "target": "nsis",
+          "arch": ["x64"]
         }
-      ],
-      "artifactName": "Lassi Shop POS.exe"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Lassi Shop POS",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "artifactName": "Lassi Shop POS Setup ${version}.${ext}"
     }
   }
 }

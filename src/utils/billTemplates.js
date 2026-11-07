@@ -50,7 +50,8 @@ export const createBillTemplate = (overrides = {}) => ({
     id: overrides.id || `template-${Date.now()}`,
     name: overrides.name || "New bill layout",
     layout: overrides.layout || "classic",
-    kotTemplateVersion: Number(overrides.kotTemplateVersion) || (overrides.layout === "kot" ? 2 : undefined),
+    kotTemplateVersion: Number(overrides.kotTemplateVersion) || (overrides.layout === "kot" ? 3 : undefined),
+    paperWidthVersion: Number(overrides.paperWidthVersion) || 1,
     paperWidth: Number(overrides.paperWidth) || 80,
     alignment: overrides.alignment || "center",
     fontFamily: overrides.fontFamily || "verdana",
@@ -59,6 +60,10 @@ export const createBillTemplate = (overrides = {}) => ({
     kotBottomFeedLines: Math.min(20, Math.max(0, Number(overrides.kotBottomFeedLines ?? 0))),
     contentPadding: Math.min(16, Math.max(0, Number(overrides.contentPadding ?? 8))),
     lineHeight: Math.min(2, Math.max(1, Number(overrides.lineHeight) || 1.35)),
+    rowSpacing: Math.min(12, Math.max(0, Number(overrides.rowSpacing ?? 4))),
+    cellPadding: Math.min(8, Math.max(0, Number(overrides.cellPadding ?? 4))),
+    itemNameWidth: Math.min(70, Math.max(30, Number(overrides.itemNameWidth ?? 54))),
+    quantityWidth: Math.min(30, Math.max(10, Number(overrides.quantityWidth ?? 16))),
     dividerStyle: ["dotted", "dashed", "solid", "double", "none"].includes(overrides.dividerStyle) ? overrides.dividerStyle : "dashed",
     titleText: overrides.titleText || "",
     titleSize: Math.min(28, Math.max(10, Number(overrides.titleSize) || 16)),
@@ -84,18 +89,26 @@ export const defaultBillTemplates = [
     createBillTemplate({ id: "classic", name: "Photo-style cashier bill", layout: "lassi-shop" }),
     createBillTemplate({
         id: "kitchen-compact",
-        kotTemplateVersion: 2,
-        name: "Kitchen KOT 58mm",
+        kotTemplateVersion: 3,
+        paperWidthVersion: 1,
+        name: "Kitchen KOT 80mm",
         layout: "kot",
-        paperWidth: 58,
+        paperWidth: 80,
         alignment: "center",
         dividerStyle: "dotted",
         fontFamily: "verdana",
         fontSize: 14,
         titleSize: 16,
         businessNameSize: 14,
-        horizontalPaddingMm: 3,
-        kotBottomFeedLines: 0,
+        horizontalPaddingMm: 8,
+        kotBottomFeedLines: 2,
+        contentPadding: 12,
+        rowSpacing: 4,
+        cellPadding: 4,
+        itemNameWidth: 54,
+        quantityWidth: 16,
+        thermalRightMargin: 3,
+        totalSize: 17,
         headerText: "",
         footerText: "",
         fields: {
@@ -158,30 +171,56 @@ export const normalizeBillTemplate = (template, fallback = defaultBillTemplates[
     };
 };
 
+const migrateKotDefaults = (template) => {
+    const defaults = defaultBillTemplates.find((entry) => entry.id === "kitchen-compact");
+    const previousDefaultOrder = ["dateTime", "billNumber", "billType", "customerName", "tableNumber", "divider:kot-biller", "businessName", "divider:kot-items", "items", "divider:kot-notes", "note"];
+    const usesPreviousDefaultOrder = !Array.isArray(template.fieldOrder)
+        || JSON.stringify(template.fieldOrder) === JSON.stringify(previousDefaultOrder);
+    const migrated = {
+        ...defaults,
+        ...template,
+        paperWidth: 80,
+        paperWidthVersion: 1,
+        name: template.name === "Kitchen KOT 58mm" ? defaults.name : (template.name || defaults.name),
+        alignment: defaults.alignment,
+        dividerStyle: defaults.dividerStyle,
+        businessName: template.businessName || defaults.businessName,
+        fields: { ...defaults.fields, ...template.fields },
+        fieldLabels: { ...defaults.fieldLabels, ...template.fieldLabels },
+        fieldOrder: usesPreviousDefaultOrder ? defaults.fieldOrder : (template.fieldOrder || defaults.fieldOrder),
+        dividers: usesPreviousDefaultOrder ? defaults.dividers : (template.dividers || defaults.dividers),
+        kotTemplateVersion: 3,
+    };
+    const defaultMigrations = {
+        fontSize: [14, 14],
+        titleSize: [16, 16],
+        lineHeight: [1.35, 1.35],
+        contentPadding: [8, 12],
+        rowSpacing: [4, 4],
+        cellPadding: [4, 4],
+        itemNameWidth: [54, 54],
+        quantityWidth: [16, 16],
+        thermalRightMargin: [2, 3],
+        horizontalPaddingMm: [3, 8],
+        kotBottomFeedLines: [0, 2],
+        businessNameSize: [14, 14],
+        totalSize: [17, 17],
+    };
+    for (const [key, [oldValue, newValue]] of Object.entries(defaultMigrations)) {
+        if (template[key] === undefined || Number(template[key]) === oldValue) migrated[key] = newValue;
+    }
+    return migrated;
+};
+
 export const normalizeBillTemplates = (templates) => {
     if (!Array.isArray(templates) || templates.length === 0) return defaultBillTemplates;
     return templates.map((template) => {
-        if (template?.id !== "kitchen-compact" || Number(template.kotTemplateVersion) >= 2) {
-            return normalizeBillTemplate(template);
-        }
-        const defaultKot = defaultBillTemplates.find((entry) => entry.id === "kitchen-compact");
-        const previousDefaultOrder = ["dateTime", "billNumber", "billType", "customerName", "tableNumber", "divider:kot-biller", "businessName", "divider:kot-items", "items", "divider:kot-notes", "note"];
-        const usesPreviousDefaultOrder = !Array.isArray(template.fieldOrder)
-            || JSON.stringify(template.fieldOrder) === JSON.stringify(previousDefaultOrder);
-        return normalizeBillTemplate({
-            ...template,
-            ...defaultKot,
-            ...template,
-            alignment: defaultKot.alignment,
-            dividerStyle: defaultKot.dividerStyle,
-            name: template.name || defaultKot.name,
-            businessName: template.businessName || defaultKot.businessName,
-            fields: { ...defaultKot.fields, ...template.fields },
-            fieldLabels: { ...defaultKot.fieldLabels, ...template.fieldLabels },
-            fieldOrder: usesPreviousDefaultOrder ? defaultKot.fieldOrder : template.fieldOrder,
-            dividers: usesPreviousDefaultOrder ? defaultKot.dividers : template.dividers,
-            kotTemplateVersion: 2,
-        });
+        const isLegacyKot = template?.id === "kitchen-compact" && Number(template.kotTemplateVersion) < 3;
+        const hasSavedWidth = Number(template?.paperWidthVersion) >= 1;
+        const migrated = isLegacyKot
+            ? migrateKotDefaults(template)
+            : { ...template, paperWidth: hasSavedWidth ? template.paperWidth : 80, paperWidthVersion: 1 };
+        return normalizeBillTemplate(migrated);
     });
 };
 

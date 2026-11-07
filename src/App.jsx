@@ -5,7 +5,7 @@ import Header from "./components/shared/header"
 import Tables from "./pages/Tables"
 import { getCurrentUser } from "./utils/auth"
 import { hydrateOrdersFromDb } from "./utils/orderStorage"
-import { connectSyncClient, getSyncSettings } from "./utils/networkSync"
+import { applySyncSnapshot, connectSyncClient, getSyncSettings } from "./utils/networkSync"
 import { applyTheme, getStoredTheme } from "./components/shared/themeToggle"
 function App() {
   useEffect(() => {
@@ -41,6 +41,13 @@ function App() {
     });
   }, [])
 
+  useEffect(() => {
+    if (!window.pflDesktop?.onSyncState) return undefined;
+    return window.pflDesktop.onSyncState((snapshot) => {
+      void applySyncSnapshot(snapshot, false);
+    });
+  }, [])
+
   return (
     <>
       <Router>
@@ -70,8 +77,8 @@ function AppRoutes() {
         <Route path="/Orders" element={<Orders />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/network-sync" element={currentUser?.role === "Admin" ? <NetworkSync /> : <Navigate to="/" replace />} />
-        <Route path="/customers" element={["Admin", "Manager"].includes(currentUser?.role) ? <Customers /> : <Navigate to="/" replace />} />
-        <Route path="/all-orders" element={["Admin", "Manager"].includes(currentUser?.role) ? <AllOrders /> : <Navigate to="/" replace />} />
+        <Route path="/customers" element={["Admin", "Manager", "Assistant Manager"].includes(currentUser?.role) ? <Customers /> : <Navigate to="/" replace />} />
+        <Route path="/all-orders" element={["Admin", "Manager", "Assistant Manager"].includes(currentUser?.role) ? <AllOrders /> : <Navigate to="/" replace />} />
         <Route path="/bill-printing-preferences" element={<BillPrintingPreferences />} />
         <Route path="/admin-settings" element={currentUser?.role === "Admin" ? <AdminSettings /> : <Navigate to="/" replace />} />
         <Route path="/developer" element={["Admin", "Manager", "Assistant Manager"].includes(currentUser?.role) ? <Developer /> : <Navigate to="/" replace />} />

@@ -52,7 +52,7 @@ const Header = () => {
             ...(["Admin", "Manager", "Assistant Manager"].includes(user?.role) ? [
                 { label: "Developer Mode", path: "/developer", section: "Navigate" },
             ] : []),
-            ...(["Admin", "Manager"].includes(user?.role) ? [
+            ...(["Admin", "Manager", "Assistant Manager"].includes(user?.role) ? [
                 { label: "All Orders", path: "/all-orders", section: "Navigate" },
                 { label: "Customers", path: "/customers", section: "Navigate" },
             ] : []),

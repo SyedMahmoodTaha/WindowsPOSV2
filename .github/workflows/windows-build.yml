@@ -58,8 +58,8 @@ jobs:
       - name: Build Vite app
         run: npm run build
 
-      - name: Package Windows portable executable
-        run: npm run dist
+      - name: Package unpacked Windows app for account verification
+        run: npx electron-builder --win dir --x64
 
       - name: Verify packaged account configuration
         shell: pwsh
@@ -86,11 +86,14 @@ jobs:
             }
           }
 
+      - name: Package Windows installer
+        run: npm run dist
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lassi-shop-pos-windows
-          path: release/*.exe
+          name: lassi-shop-pos-windows-installer
+          path: release/Lassi Shop POS Setup *.exe
           if-no-files-found: error
 
   build-db-viewer-windows:

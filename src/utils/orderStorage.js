@@ -159,7 +159,7 @@ export const hydrateOrdersFromDb = async () => {
 };
 
 export const appendOrder = (order) => {
-    const orders = [order, ...readOrders()];
+    const orders = [{ ...order, updatedAt: order.updatedAt || order.createdAt || new Date().toISOString() }, ...readOrders()];
     localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
     if (window.pflDesktop && window.pflDesktop.saveOrders) {
         void persistOrdersToDb(orders);
@@ -170,7 +170,9 @@ export const appendOrder = (order) => {
 };
 
 export const updateOrder = (orderId, changes) => {
-    const orders = readOrders().map((order) => order.id === orderId ? { ...order, ...changes } : order);
+    const orders = readOrders().map((order) => order.id === orderId
+        ? { ...order, ...changes, updatedAt: new Date().toISOString() }
+        : order);
     localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
     if (window.pflDesktop && window.pflDesktop.saveOrders) {
         void persistOrdersToDb(orders);
@@ -200,18 +202,19 @@ export const removeOrder = (orderId) => {
     if (window.pflDesktop && window.pflDesktop.saveOrders) {
         void persistOrdersToDb(remainingOrders);
     }
-    void pushOrdersToHost(remainingOrders);
+    void pushOrdersToHost(remainingOrders, removedOrder ? [String(orderId)] : []);
     window.dispatchEvent(new Event("pfl-orders-updated"));
 };
 
 export const resetOrderData = () => {
+    const deletedOrderIds = readOrders().map((order) => String(order.id));
     localStorage.removeItem(ORDERS_STORAGE_KEY);
     localStorage.removeItem(BILL_SEQUENCE_STORAGE_KEY);
     localStorage.removeItem(TOKEN_SEQUENCE_STORAGE_KEY);
     if (window.pflDesktop && window.pflDesktop.saveOrders) {
         void persistOrdersToDb([]);
     }
-    void pushOrdersToHost([]);
+    void pushOrdersToHost([], deletedOrderIds);
     window.dispatchEvent(new Event("pfl-orders-updated"));
 };
 
@@ -275,6 +278,15 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
     ].map((line) => String(line || "").trim()).filter(Boolean);
     const paperWidth = template.paperWidth === 58 ? 58 : 80;
     if (template.layout === "lassi-shop" && destination !== "kitchen") {
+        const cashierFontFamilies = {
+            verdana: "Verdana, Arial, sans-serif",
+            monospace: "monospace",
+            sans: "Arial, sans-serif",
+            serif: "Georgia, serif",
+        };
+        const cashierFontFamily = cashierFontFamilies[template.fontFamily] || cashierFontFamilies.verdana;
+        const cashierFontSize = Math.min(24, Math.max(10, Number(template.fontSize) || 14));
+        const cashierTotalSize = Math.min(28, Math.max(12, Number(template.totalSize) || 17));
         const orderItems = Array.isArray(order.cart) ? order.cart : [];
         const totalQuantity = orderItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
         const itemSubtotal = orderItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0);
@@ -300,6 +312,9 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         const dateTypeMarkup = options.dateTime || options.billType
             ? `<div class="meta-row">${options.dateTime ? `<span>Date: ${escapeHtml(receiptDateTime)}</span>` : "<span></span>"}${options.billType ? `<strong>${escapeHtml(receiptType)}</strong>` : ""}</div>`
             : "";
+        const tableMarkup = order.orderType === "Table" && options.tableNumber && tableNumber
+            ? `<div class="meta-row"><span>Table:</span><strong>${escapeHtml(tableNumber)}</strong></div>`
+            : "";
         const cashierBillMarkup = options.cashierName || options.billNumber
             ? `<div class="meta-row">${options.cashierName ? `<span>Cashier: ${escapeHtml(cashierName)}</span>` : "<span></span>"}${options.billNumber ? `<span>Bill No.: ${escapeHtml(order.orderNumber || "-")}</span>` : ""}</div>`
             : "";
@@ -323,7 +338,7 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
             @page { size: ${paperWidth}mm auto; margin: 0; }
             * { box-sizing: border-box; }
             html, body { width: ${paperWidth}mm; max-width: ${paperWidth}mm; margin: 0; padding: 0; }
-            body { padding: 3mm 5mm; color: #000; font: 700 11px/1.2 Arial, Verdana, sans-serif; overflow-wrap: anywhere; }
+            body { padding: 3mm 5mm 3mm 3mm; color: #000; font: 700 ${cashierFontSize}px/1.2 ${cashierFontFamily}; overflow-wrap: anywhere; }
             .logo { display: flex; justify-content: center; align-items: center; margin: 0 auto 2mm; }
             .logo img { display: block; width: auto; max-width: 68%; max-height: 27mm; object-fit: contain; }
             .header-phone { margin: 0 0 3mm; text-align: center; font-size: 13px; font-weight: 700; }
@@ -345,10 +360,10 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
             .items small { display: block; font-size: 9px; font-weight: 400; }
             .totals { margin-top: 1mm; border-top: 1px solid #777; padding-top: 1mm; }
             .total-row { display: flex; justify-content: space-between; gap: 2mm; padding: 0.7mm 0; }
-            .grand-total { display: flex; justify-content: space-between; gap: 2mm; border-top: 1px solid #777; margin-top: 1mm; padding: 1.5mm 0; font-size: 13px; }
+            .grand-total { display: flex; justify-content: space-between; gap: 2mm; border-top: 1px solid #777; margin-top: 1mm; padding: 1.5mm 0; font-size: ${cashierTotalSize}px; }
             footer { margin-top: 2mm; text-align: center; font-size: 9px; line-height: 1.3; }
             @media print { body { margin: 0; } }
-        </style></head><body>${logoMarkup}${options.businessName ? `<div class="header-phone">${escapeHtml(template.headerPhoneNumber || "9611648843")}</div>` : ""}${customerMarkup}${dateTypeMarkup}${cashierBillMarkup}${options.items ? `<table class="items"><thead><tr><th>Item</th><th class="numeric">Qty.</th><th class="numeric">Price</th><th class="numeric">Amount</th></tr></thead><tbody>${itemRows}</tbody></table>` : ""}${totalsMarkup}${footerMarkup}</body></html>`;
+        </style></head><body>${logoMarkup}${options.businessName ? `<div class="header-phone">${escapeHtml(template.headerPhoneNumber || "9611648843")}</div>` : ""}${customerMarkup}${dateTypeMarkup}${tableMarkup}${cashierBillMarkup}${options.items ? `<table class="items"><thead><tr><th>Item</th><th class="numeric">Qty.</th><th class="numeric">Price</th><th class="numeric">Amount</th></tr></thead><tbody>${itemRows}</tbody></table>` : ""}${totalsMarkup}${footerMarkup}</body></html>`;
     }
     const fieldMarkup = {
         items: `<table><thead><tr><th>${escapeHtml(labels.item)}</th><th>${escapeHtml(labels.quantity)}</th>${options.itemPrice ? `<th>${escapeHtml(labels.itemPrice)}</th>` : ""}</tr></thead><tbody>${items}</tbody></table>`,
@@ -415,7 +430,7 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         body {
           font: 700 ${fontSize}px/${lineHeight} ${fontFamily};
           color: #000000;
-          padding: ${contentPadding}px ${isKotLayout ? `${horizontalPaddingMm}mm` : "5mm"} ${isKotLayout ? `calc(${contentPadding}px + ${kotBottomFeedLines * fontSize * lineHeight}px)` : `${contentPadding}px`};
+          padding: ${contentPadding}px 5mm ${isKotLayout ? `calc(${contentPadding}px + ${kotBottomFeedLines * fontSize * lineHeight}px)` : `${contentPadding}px`} ${isKotLayout ? `${horizontalPaddingMm}mm` : "3mm"};
           box-sizing: border-box;
           word-break: break-word;
           overflow-wrap: anywhere;

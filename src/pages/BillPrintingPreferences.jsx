@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { readWebPrinterSettings, renderReceiptHtml, saveWebPrinterSettings } from "../utils/orderStorage";
 import { BILL_FIELD_DEFINITIONS, createBillTemplate, defaultBillTemplates, normalizeBillTemplates } from "../utils/billTemplates";
 import BillLayoutControls from "./BillLayoutControls";
+import { pushSharedDataToHost } from "../utils/networkSync";
 
 const previewOrder = {
     orderNumber: "37",
@@ -123,6 +124,7 @@ const BillPrintingPreferences = () => {
             } else {
                 saveWebPrinterSettings(payload);
             }
+            void pushSharedDataToHost("printer-settings-sync", { settings: payload });
             setMessage("Bill layout preference saved");
         } catch (error) {
             console.error("Could not save bill layout preference", error);

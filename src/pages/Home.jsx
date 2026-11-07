@@ -38,7 +38,7 @@ const Home = () => {
         { label: "Tables", icon: MdOutlineTableBar, path:"/Tables" },
         { label: "Orders", icon: GoListOrdered, path: "/Orders" },
         { label: "Printer Settings", icon: FaPrint, path: "/settings" },
-        ...(["Admin", "Manager"].includes(currentUser?.role) ? [
+        ...(["Admin", "Manager", "Assistant Manager"].includes(currentUser?.role) ? [
             { label: "Customers", icon: FaUsers, path: "/customers" },
         ] : []),
         ...(currentUser?.role === "Admin" ? [
@@ -46,12 +46,14 @@ const Home = () => {
             { label: "Settings", icon: FaUtensils, path: "/admin-settings" },
             { label: "Developer Mode", icon: FaUtensils, path: "/developer" },
         ] : []),
-        ...(currentUser?.role === "Manager" ? [
+        ...(["Manager", "Assistant Manager"].includes(currentUser?.role) ? [
             { label: "All Orders", icon: GoListOrdered, path: "/all-orders" },
-            { label: "Menu & Staff", icon: FaUtensils, path: "/developer" },
         ] : []),
         ...(currentUser?.role === "Assistant Manager" ? [
-            { label: "My Password", icon: FaUtensils, path: "/developer" },
+            { label: "My Account", icon: FaUtensils, path: "/developer" },
+        ] : []),
+        ...(currentUser?.role === "Manager" ? [
+            { label: "Menu & Staff", icon: FaUtensils, path: "/developer" },
         ] : []),
     ];
 

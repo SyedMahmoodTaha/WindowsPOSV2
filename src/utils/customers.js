@@ -1,3 +1,5 @@
+import { pushSharedDataToHost } from "./networkSync";
+
 const CUSTOMER_NOTES_STORAGE_KEY = "pfl-customer-notes-v1";
 
 export const normalizeCustomerPhone = (phone) => String(phone || "").replace(/\D/g, "");
@@ -118,5 +120,6 @@ export const saveCustomerNotes = async (customerId, notes) => {
         nextNotes[customerId] = notes;
         localStorage.setItem(CUSTOMER_NOTES_STORAGE_KEY, JSON.stringify(nextNotes));
     }
+    void pushSharedDataToHost("customer-notes-sync", { customerId, notes });
     window.dispatchEvent(new Event("pfl-customers-updated"));
 };

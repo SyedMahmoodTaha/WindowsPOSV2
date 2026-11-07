@@ -1,3 +1,5 @@
+import { pushSharedDataToHost } from "./networkSync";
+
 export const CATALOG_STORAGE_KEY = "pfl-catalog-v1";
 export const TABLES_STORAGE_KEY = "pfl-tables-v1";
 const TABLES_INITIALIZED_KEY = "pfl-tables-initialized-v1";
@@ -49,6 +51,7 @@ export const saveCatalog = async (catalog) => {
     } else {
         localStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(catalog));
     }
+    void pushSharedDataToHost("catalog-sync", { catalog });
     window.dispatchEvent(new Event("pfl-catalog-updated"));
     return catalog;
 };
@@ -80,6 +83,7 @@ export const saveTables = async (tables) => {
         localStorage.setItem(TABLES_STORAGE_KEY, JSON.stringify(tables));
         localStorage.setItem(TABLES_INITIALIZED_KEY, "true");
     }
+    void pushSharedDataToHost("tables-sync", { tables });
     window.dispatchEvent(new Event("pfl-catalog-updated"));
     return tables;
 };
