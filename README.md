@@ -50,6 +50,8 @@ In New Order, Favourites and Frequently Used stay pinned above other categories.
 
 Developer Mode now supports removing menu categories while moving their products to a remaining category. Global search can find any account from a cashier or manager session; selecting one signs out and still requires that account's password. New orders require an order type before Save or KOT, and the Inventory page currently displays a Coming soon placeholder. Admin reports include order status/type, item quantity, and busiest-hour breakdowns.
 
+The Home Quick Actions area is limited to New Order, Tables, Orders, and Printer Settings. Use More Settings for other options available to the signed-in role.
+
 ## Local development
 
 Use Node.js 20 on Windows. Copy `.env.example` to `.env` in the POS root and set local account credentials, then run:

@@ -1,6 +1,6 @@
 import { HashRouter as Router, Navigate, Route, Routes, useLocation } from "react-router-dom"
 import { useEffect } from "react"
-import {Home, Auth, NewOrder, Orders, Settings, NetworkSync, AllOrders, BillPrintingPreferences, AdminSettings, Developer, SqliteDbViewer, Customers, Inventory} from './pages'
+import {Home, Auth, NewOrder, Orders, Settings, NetworkSync, AllOrders, BillPrintingPreferences, AdminSettings, Developer, SqliteDbViewer, Customers, Inventory, MoreSettings} from './pages'
 import Header from "./components/shared/header"
 import Tables from "./pages/Tables"
 import { getCurrentUser } from "./utils/auth"
@@ -79,6 +79,7 @@ function AppRoutes() {
         <Route path="/network-sync" element={currentUser?.role === "Admin" ? <NetworkSync /> : <Navigate to="/" replace />} />
         <Route path="/customers" element={["Admin", "Manager", "Assistant Manager"].includes(currentUser?.role) ? <Customers /> : <Navigate to="/" replace />} />
         <Route path="/inventory" element={<Inventory />} />
+        <Route path="/more-settings" element={<MoreSettings />} />
         <Route path="/all-orders" element={["Admin", "Manager", "Assistant Manager"].includes(currentUser?.role) ? <AllOrders /> : <Navigate to="/" replace />} />
         <Route path="/bill-printing-preferences" element={<BillPrintingPreferences />} />
         <Route path="/admin-settings" element={currentUser?.role === "Admin" ? <AdminSettings /> : <Navigate to="/" replace />} />
