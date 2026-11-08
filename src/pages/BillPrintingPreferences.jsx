@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { FaArrowLeft } from "react-icons/fa6";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { readWebPrinterSettings, renderReceiptHtml, saveWebPrinterSettings } from "../utils/orderStorage";
 import { BILL_FIELD_DEFINITIONS, createBillTemplate, defaultBillTemplates, normalizeBillTemplates } from "../utils/billTemplates";
 import BillLayoutControls from "./BillLayoutControls";
@@ -24,6 +24,8 @@ const previewOrder = {
 };
 
 const BillPrintingPreferences = () => {
+    const location = useLocation();
+    const backPath = location.state?.from === "/more-settings" ? "/more-settings" : "/settings";
     const [settings, setSettings] = useState({ billTemplates: defaultBillTemplates, selectedBillTemplateIds: { kitchen: "kitchen-compact", cashier: "classic" }, printCashierToKitchen: false });
     const [destination, setDestination] = useState("cashier");
     const [selectedTemplateId, setSelectedTemplateId] = useState("classic");
@@ -136,7 +138,7 @@ const BillPrintingPreferences = () => {
         <main className="min-h-screen bg-[#1f1f1f] px-4 py-6 text-[#f5f5f5] sm:px-6">
             <div className="mx-auto max-w-6xl">
                 <div className="mb-8 flex items-center gap-4">
-                    <Link to="/settings" className="rounded-full p-3 text-[#d3d3d3] hover:bg-[#d3d3d3] hover:text-[#1a1a1a]" aria-label="Back to printer settings"><FaArrowLeft /></Link>
+                    <Link to={backPath} className="rounded-full p-3 text-[#d3d3d3] hover:bg-[#d3d3d3] hover:text-[#1a1a1a]" aria-label={backPath === "/more-settings" ? "Back to More Settings" : "Back to printer settings"}><FaArrowLeft /></Link>
                     <div><p className="text-sm uppercase tracking-[0.2em] text-[#ababab]">Receipt design</p><h1 className="text-3xl font-semibold">Bill printing preference</h1></div>
                 </div>
                 <section className="rounded-[24px] bg-[#2a2a2a] p-6 shadow-lg">

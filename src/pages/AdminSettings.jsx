@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { FaArrowLeft, FaBoxArchive, FaChartColumn, FaChartPie, FaDollarSign, FaReceipt } from "react-icons/fa6";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { readOrders } from "../utils/orderStorage";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -286,6 +286,8 @@ const buildHourlyActivity = (orders) => {
 const formatHour = (hour) => new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: "numeric", hour12: true });
 
 const AdminSettings = () => {
+    const location = useLocation();
+    const backPath = location.state?.from === "/more-settings" ? "/more-settings" : "/";
     const [activeTab, setActiveTab] = useState("sales");
     const [reportPeriod, setReportPeriod] = useState("daily");
     const [orders, setOrders] = useState(() => readOrders());
@@ -417,7 +419,7 @@ const AdminSettings = () => {
             <div className="mx-auto max-w-7xl">
                 <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <Link to="/" className="rounded-full p-3 text-[#d3d3d3] hover:bg-[#d3d3d3] hover:text-[#1a1a1a]" aria-label="Back to home">
+                        <Link to={backPath} className="rounded-full p-3 text-[#d3d3d3] hover:bg-[#d3d3d3] hover:text-[#1a1a1a]" aria-label={backPath === "/more-settings" ? "Back to More Settings" : "Back to home"}>
                             <FaArrowLeft />
                         </Link>
                         <div>
@@ -425,7 +427,7 @@ const AdminSettings = () => {
                             <h1 className="text-3xl font-semibold">Settings</h1>
                         </div>
                     </div>
-                    <Link to="/all-orders" className="inline-flex items-center gap-2 rounded-[10px] border border-[#555] bg-[#2a2a2a] px-4 py-3 text-sm font-semibold text-[#f5f5f5] transition-colors hover:bg-[#3a3a3a]"><FaBoxArchive className="text-[#d3d3d3]" /> All Orders</Link>
+                    <Link to="/all-orders" state={location.state} className="inline-flex items-center gap-2 rounded-[10px] border border-[#555] bg-[#2a2a2a] px-4 py-3 text-sm font-semibold text-[#f5f5f5] transition-colors hover:bg-[#3a3a3a]"><FaBoxArchive className="text-[#d3d3d3]" /> All Orders</Link>
                 </div>
 
                 {!hasData ? (

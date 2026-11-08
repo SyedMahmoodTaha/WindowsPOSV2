@@ -1,16 +1,15 @@
 {
-  "name": "pfl",
+  "name": "Tyep",
   "private": true,
-  "version": "2.2.2",
-  "description": "Lassi Shop point-of-sale desktop application",
-  "author": "Lassi Shop",
+  "version": "2.3.0",
+  "description": "Tyep point-of-sale desktop application",
+  "author": "Tyep",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "desktop": "npm run build && electron .",
-    "db": "npm run build && electron . --db-viewer",
-    "desktop:win": "npm run build && electron-builder --win dir --x64 && node -e \"const fs=require('node:fs'); const cp=require('node:child_process'); const exe='release/win-unpacked/Lassi Shop POS.exe'; if (!fs.existsSync(exe)) { console.error('Windows app executable not found in release/win-unpacked/.'); process.exit(1); } console.log('Launching:', exe); cp.spawn(exe,{stdio:'inherit',shell:false});\"",
+    "desktop:win": "npm run build && electron-builder --win dir --x64 && node -e \"const fs=require('node:fs'); const cp=require('node:child_process'); const exe='release/win-unpacked/Tyep.exe'; if (!fs.existsSync(exe)) { console.error('Windows app executable not found in release/win-unpacked/.'); process.exit(1); } console.log('Launching:', exe); cp.spawn(exe,{stdio:'inherit',shell:false});\"",
     "dist": "npm run build && electron-builder --win nsis --x64 --publish never",
     "lint": "oxlint",
     "preview": "vite preview"
@@ -39,7 +38,7 @@
   "main": "electron/main.cjs",
   "build": {
     "appId": "com.lassishop.pos",
-    "productName": "Lassi Shop POS",
+    "productName": "Tyep",
     "directories": {
       "output": "release"
     },
@@ -70,10 +69,10 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Lassi Shop POS",
+      "shortcutName": "Tyep",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
-      "artifactName": "Lassi Shop POS Setup ${version}.${ext}"
+      "artifactName": "Tyep Setup ${version}.${ext}"
     }
   }
 }

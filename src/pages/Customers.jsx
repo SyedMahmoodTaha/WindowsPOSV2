@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { FaArrowLeft, FaMagnifyingGlass, FaPhone, FaUserGroup } from "react-icons/fa6";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { getCurrentUser } from "../utils/auth";
 import { getCustomers, saveCustomerNotes } from "../utils/customers";
 
@@ -17,6 +17,8 @@ const formatDate = (value) => {
 };
 
 const Customers = () => {
+    const location = useLocation();
+    const backPath = location.state?.from === "/more-settings" ? "/more-settings" : "/";
     const user = getCurrentUser();
     const isAdmin = user?.role === "Admin";
     const [customers, setCustomers] = useState([]);
@@ -86,7 +88,7 @@ const Customers = () => {
         <main className="customer-page min-h-screen bg-[#1f1f1f] px-4 py-6 text-[#f5f5f5] sm:px-6">
             <div className="mx-auto max-w-7xl">
                 <header className="mb-6 flex items-center gap-4">
-                    <Link to="/" className="rounded-full p-3 text-[#d3d3d3] transition-colors hover:bg-[#d3d3d3] hover:text-[#1a1a1a]" aria-label="Back to home">
+                    <Link to={backPath} className="rounded-full p-3 text-[#d3d3d3] transition-colors hover:bg-[#d3d3d3] hover:text-[#1a1a1a]" aria-label={backPath === "/more-settings" ? "Back to More Settings" : "Back to home"}>
                         <FaArrowLeft />
                     </Link>
                     <div>

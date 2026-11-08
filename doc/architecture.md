@@ -1,8 +1,8 @@
-# Lassi Shop POS Architecture
+# Tyep POS Architecture
 
 ## Overview
 
-Lassi Shop POS is a React point-of-sale application packaged as an Electron desktop app. Vite builds the renderer into `dist/`; Electron opens that build from disk. The renderer also supports browser development, where desktop-only services fall back to browser storage and the browser print dialog.
+Tyep is a React point-of-sale application packaged as an Electron desktop app. Vite builds the renderer into `dist/`; Electron opens that build from disk. The renderer also supports browser development, where desktop-only services fall back to browser storage and the browser print dialog.
 
 ```text
 React renderer
@@ -15,25 +15,25 @@ Electron main process
 SQLite database in Electron userData
 ```
 
-The renderer uses `HashRouter`, which supports file-based Electron loading and direct navigation to the database viewer window. The main window starts at `dist/index.html`; the separate database viewer opens that same document with the `#/sqlite-db-viewer` route.
+The renderer uses `HashRouter`, which supports file-based Electron loading. The main window starts at `dist/index.html`.
 
 ## Runtime Layers
 
 ### Renderer
 
 - `src/App.jsx` initializes the saved theme and hydrates desktop orders, then registers the application routes and role checks.
-- `src/pages/` contains sign-in, home, order entry, tables, active orders, the completed-order archive, printer preferences, admin reporting, developer utilities, and the SQLite viewer.
+- `src/pages/` contains sign-in, home, personal account settings, order entry, tables, active orders, the completed-order archive, staff profiles, printer preferences, admin reporting, and developer utilities.
 - `src/components/shared/` contains shared navigation and theme behavior.
 - `src/utils/` owns browser/desktop storage adapters, authentication, catalog access, order handling, printing markup, and client-side network sync.
 - `src/constants/` contains shared application constants; `src/assets/` contains bundled visual assets.
 
-Unauthenticated users are redirected to `/Auth`. The Admin role is required for `/admin-settings`, `/developer`, and `/sqlite-db-viewer`.
+Unauthenticated users are redirected to `/Auth`. Admin-only routes include `/admin-settings` and `/developer`. All signed-in users can update their own name, photo, contact details, and password. Admins can manage POS login accounts and separate shop-staff profiles; Managers can view the staff directory except Admin accounts.
 
 ### Electron Main Process
 
 `electron/main.cjs` creates the windows and registers `pfl:*` IPC handlers. `electron/preload.cjs` exposes a specific `window.pflDesktop` API through `contextBridge`; renderer Node integration is disabled and context isolation is enabled. Keep privileged file, database, printer, and network operations in the main process rather than importing Node APIs into React.
 
-The bridge covers authentication and users, printer settings and printing, report export, catalog and table data, order persistence, database inspection/mutation, and sync configuration/order transfer.
+The bridge covers authentication and users, printer settings and printing, report export, catalog and table data, order persistence, shop-staff data, and sync configuration/order transfer.
 
 ### Persistence
 
@@ -42,12 +42,13 @@ The bridge covers authentication and users, printer settings and printing, repor
 | Orders | SQLite `orders.payload` JSON | `localStorage` key `pfl-orders-v2` |
 | Catalog/categories | SQLite `items` and `categories` | Catalog utility localStorage keys |
 | Dining tables | SQLite `tables` | Catalog utility localStorage keys |
-| Users | `users.json` in Electron userData, combined with configured accounts | Auth utility localStorage |
+| POS login accounts | `users.json` in Electron userData, combined with configured accounts | Auth utility localStorage |
+| Shop-staff profiles | `shop-staff.json` in Electron userData | `pfl-shop-staff-v1` |
 | Printer settings | `printer-settings.json` in Electron userData | `pfl-printer-settings-v1` |
 | Network sync settings | `sync-settings.json` in Electron userData | `pfl-sync-settings-v1` |
 | Theme | `localStorage` key `pfl-theme` | Same |
 
-The WindowsPOSV1 build stores Electron data below `<appData>/Lassi Shop POS Windows` and does not import the previous `Lassi Shop POS` database. Existing data in the old folder remains untouched. The SQLite database uses WAL journaling. Its application tables are `categories`, `items`, `tables`, `users`, `orders`, and `settings`; orders are stored as serialized payloads.
+Electron data is stored below `<appData>/Lassi Shop POS`. This existing data directory is retained across the user-facing rename to Tyep so existing installations keep their data. The application changes Electron's `userData` path to this shared directory and copies a legacy `pfl.sqlite` file there if the target database does not already exist. The SQLite database uses WAL journaling. Its application tables are `categories`, `items`, `tables`, `users`, `orders`, and `settings`; orders are stored as serialized payloads.
 
 `db-core.cjs` initializes the schema and seeds the menu and default tables when the `items` table is empty. `menu-seed.cjs` is the catalog seed source. A first-run Windows marker triggers a one-time order-data clear; it does not clear catalog data.
 
@@ -61,13 +62,13 @@ Order utilities update the renderer's localStorage snapshot, emit `pfl-orders-up
 
 Order entry builds receipt HTML and calls `printOrder`. Electron resolves the configured kitchen or cashier printer, then either sends ESC/POS bytes to a network printer (default port `9100`) or silently prints an HTML receipt to an installed printer. Browser mode uses the normal browser print dialog. Printer preferences include per-destination bill template IDs and receipt fields.
 
-### LAN Order Sync
+### LAN Data Sync
 
-An enabled desktop host starts a WebSocket server on the configured port (default `4099`) and listens on all interfaces. It restores the host automatically on app startup. Clients connect to `ws://<host>:<port>` and send/receive `orders-sync` messages containing the full order list. New clients receive the current host order list on connection; received orders are saved to each client database. Sync settings are saved to both desktop settings and renderer storage. This is a same-network order replication path, not a conflict-resolving database protocol; avoid editing the same order concurrently on multiple machines. Menu, table, user, and printer settings are not synchronized.
+An enabled desktop host starts a WebSocket server on the configured port (default `4099`) and listens on all interfaces. It restores the host automatically on app startup. A connected client receives a full snapshot of catalog, dining tables, orders, POS accounts and their profile details, shop-staff profiles, and shared printer preferences. Client changes to shared data are sent as typed updates and applied by the host, then propagated in later snapshots. Local printer device selections remain on each device. This is a same-network replication path, not a conflict-resolving database protocol; avoid editing the same record concurrently on multiple machines.
 
-### Reports and Database Tools
+### Reports
 
-The Admin settings page aggregates the locally available orders and can request an Excel workbook export from Electron. The SQLite viewer uses dedicated IPC methods to list tables, read rows, and insert, update, or delete rows. It is an administrative tool that can directly change persisted data.
+The Admin settings page aggregates the locally available orders and can request an Excel workbook export from Electron.
 
 ## Build and Run
 
@@ -78,7 +79,6 @@ From the `PFL/` directory:
 | `npm run dev` | Run the Vite browser development server |
 | `npm run build` | Build the renderer into `dist/` |
 | `npm run desktop` | Build and launch the Electron app |
-| `npm run db` | Build and launch the database viewer app flow |
 | `npm run lint` | Run Oxlint |
 | `npm run dist` | Build a Windows portable/installer distribution |
 | `npm run build:mac` | Build the macOS arm64 directory target |

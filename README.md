@@ -1,4 +1,4 @@
-# Lassi Shop POS V2 for Windows
+# Tyep POS for Windows
 
 This folder is structured as a standalone GitHub repository, following the deployable layout of `WindowsPOSV1/`:
 
@@ -7,7 +7,7 @@ This folder is structured as a standalone GitHub repository, following the deplo
 - `.github/workflows/windows-build.yml` builds and uploads both applications.
 - `doc/` contains architecture, design, and project notes.
 
-This folder name identifies the source project; the POS package version is `2.2.2`. The POS and DB Viewer use the current Windows feature source.
+This folder name identifies the source project; the POS package version is `2.3.0`. The POS and DB Viewer use the current Windows feature source. See [V2.3.0.md](./V2.3.0.md) for the POS implementation guide.
 
 ## GitHub Actions build
 
@@ -51,6 +51,8 @@ In New Order, Favourites and Frequently Used stay pinned above other categories.
 Developer Mode now supports removing menu categories while moving their products to a remaining category. Global search can find any account from a cashier or manager session; selecting one signs out and still requires that account's password. New orders require an order type before Save or KOT, and the Inventory page currently displays a Coming soon placeholder. Admin reports include order status/type, item quantity, and busiest-hour breakdowns.
 
 The Home Quick Actions area is limited to New Order, Tables, Orders, and Printer Settings. Use More Settings for other options available to the signed-in role.
+
+Version 2.3.0 aligns the POS with the tested PFL source, including separate POS-user and shop-staff profiles, self-service account details and photos, Manager privacy for Admin accounts, and precise fractional-rupee order totals.
 
 ## Local development
 

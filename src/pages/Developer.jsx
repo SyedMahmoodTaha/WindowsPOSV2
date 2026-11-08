@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
 import { FaArrowLeft, FaPenToSquare, FaTrashCan } from "react-icons/fa6";
-import { Link } from "react-router-dom";
-import {
-  getCurrentUser,
-  getManageableUsers,
-  saveManageableUsers,
-} from "../utils/auth";
+import { Link, useLocation } from "react-router-dom";
+import { getCurrentUser } from "../utils/auth";
 import {
   readCatalog,
   readCatalogAsync,
@@ -18,10 +14,11 @@ import { resetBillSequence } from "../utils/orderStorage";
 const isSpecialCategory = (category) => ["favourites", "favorites", "all", "frequently used"].includes(String(category).toLowerCase());
 
 const Developer = () => {
+  const location = useLocation();
+  const backPath = location.state?.from === "/more-settings" ? "/more-settings" : "/";
   const user = getCurrentUser();
   const [catalog, setCatalog] = useState(readCatalog);
   const [tables, setTables] = useState([]);
-  const [users, setUsers] = useState([]);
   const [menuSearch, setMenuSearch] = useState("");
   const [newCategory, setNewCategory] = useState("");
   const [newTable, setNewTable] = useState("");
@@ -31,37 +28,21 @@ const Developer = () => {
     price: "",
     code: "",
     diet: "veg",
+    favorite: false,
     variationNames: "",
     variationPrices: "",
-  });
-  const [newUser, setNewUser] = useState({
-    name: "",
-    username: "",
-    password: "",
-    role: "Cashier",
   });
   const [message, setMessage] = useState("");
   const [editingItem, setEditingItem] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
-  const [editingUser, setEditingUser] = useState(null);
-  const [userDraft, setUserDraft] = useState(null);
   const isAdmin = user?.role === "Admin";
   const canManageCatalog = isAdmin || user?.role === "Manager";
-  const canManageStaff = isAdmin || user?.role === "Manager" || user?.role === "Assistant Manager";
-  const canUseDeveloperMode = canManageStaff;
+  const canUseDeveloperMode = isAdmin || canManageCatalog || user?.role === "Assistant Manager";
 
   useEffect(() => {
     readCatalogAsync().then(setCatalog);
     if (isAdmin) readTablesAsync().then(setTables);
   }, [isAdmin]);
-
-  useEffect(() => {
-    if (canManageStaff) {
-      getManageableUsers()
-        .then(setUsers)
-        .catch((error) => setMessage(`Could not load users: ${error.message}`));
-    }
-  }, [canManageStaff]);
 
   const menuSearchTerm = menuSearch.trim().toLowerCase();
   const filteredMenuItems = catalog.menuItems.filter((item) =>
@@ -116,7 +97,7 @@ const Developer = () => {
             name,
             price: prices[index] ?? Number(newItem.price),
           })),
-          favorite: false,
+          favorite: newItem.favorite,
         },
       ],
     });
@@ -127,6 +108,7 @@ const Developer = () => {
       price: "",
       code: "",
       diet: "veg",
+      favorite: false,
       variationNames: "",
       variationPrices: "",
     });
@@ -286,82 +268,6 @@ const Developer = () => {
       setMessage(`Could not save tables: ${error.message}`);
     }
   };
-  const addUser = async (event) => {
-    event.preventDefault();
-    if (
-      !newUser.name ||
-      !newUser.username ||
-      !newUser.password ||
-      users.some((candidate) => candidate.username === newUser.username)
-    )
-      return setMessage("Complete fields and use a unique username");
-    const nextUsers = [...users, newUser];
-    try {
-      await saveManageableUsers(nextUsers);
-      setUsers(await getManageableUsers());
-      setNewUser({ name: "", username: "", password: "", role: "Cashier" });
-      setMessage("User saved");
-    } catch (error) {
-      setMessage(`Could not save user: ${error.message}`);
-    }
-  };
-  const saveUserChanges = async (username, changes) => {
-    if (
-      users.some(
-        (candidate) =>
-          candidate.username !== username &&
-          candidate.username === changes.username,
-      )
-    ) {
-      setMessage("Username must be unique");
-      return;
-    }
-    const nextUsers = users.map((candidate) =>
-      candidate.username === username
-        ? { ...candidate, ...changes }
-        : candidate,
-    );
-    try {
-      await saveManageableUsers(nextUsers);
-      setUsers(await getManageableUsers());
-      if (username === user.username && (changes.name || changes.username || changes.role))
-        sessionStorage.setItem(
-          "pfl-auth-user",
-          JSON.stringify({
-            ...user,
-            ...(changes.name ? { name: changes.name } : {}),
-            ...(changes.username ? { username: changes.username } : {}),
-            ...(changes.role ? { role: changes.role } : {}),
-          }),
-        );
-      setMessage("User details saved");
-      return true;
-    } catch (error) {
-      setMessage(`Could not save user: ${error.message}`);
-      return false;
-    }
-  };
-  const openEditUser = (candidate) => {
-    setEditingUser(candidate);
-    setUserDraft({ ...candidate, originalUsername: candidate.originalUsername || candidate.username, newPassword: "" });
-  };
-  const saveEditedUser = async (event) => {
-    event.preventDefault();
-    if (!isAdmin && !userDraft.newPassword) return setMessage("Enter a new password");
-    const changes = isAdmin
-      ? {
-          name: userDraft.name.trim(),
-          username: userDraft.username.trim(),
-          ...(userDraft.newPassword ? { password: userDraft.newPassword } : {}),
-          role: userDraft.role,
-          originalUsername: userDraft.originalUsername,
-        }
-      : { password: userDraft.newPassword };
-    const saved = await saveUserChanges(editingUser.username, changes);
-    if (!saved) return;
-    setEditingUser(null);
-    setUserDraft(null);
-  };
   const resetBill = () => {
     if (
       !window.confirm(
@@ -372,37 +278,14 @@ const Developer = () => {
     resetBillSequence();
     setMessage("Bill numbering reset to 001");
   };
-  const deleteUser = async (username) => {
-    if (
-      [
-        import.meta.env.VITE_ADMIN_USERNAME,
-        import.meta.env.VITE_CASHIER_USERNAME,
-      ].includes(username)
-    ) {
-      setMessage("Configured accounts cannot be deleted");
-      return;
-    }
-    if (!window.confirm(`Delete user ${username}?`)) return;
-    const nextUsers = users.filter(
-      (candidate) => candidate.username !== username,
-    );
-    try {
-      await saveManageableUsers(nextUsers);
-      setUsers(nextUsers);
-      setMessage("User deleted");
-    } catch (error) {
-      setMessage(`Could not delete user: ${error.message}`);
-    }
-  };
-
   return (
     <main className="min-h-screen bg-[#1f1f1f] px-4 py-6 text-[#f5f5f5] sm:px-6">
       <div className="mx-auto max-w-6xl">
         <div className="mb-8 flex items-center gap-4">
           <Link
-            to="/"
+            to={backPath}
             className="rounded-full p-3 text-[#d3d3d3] hover:bg-[#d3d3d3] hover:text-[#1a1a1a]"
-            aria-label="Back to home"
+            aria-label={backPath === "/more-settings" ? "Back to More Settings" : "Back to home"}
           >
             <FaArrowLeft />
           </Link>
@@ -410,7 +293,7 @@ const Developer = () => {
             <p className="text-sm uppercase tracking-[0.2em] text-[#ababab]">
               {isAdmin ? "Admin tools" : user.role === "Manager" ? "Manager tools" : "Account"}
             </p>
-            <h1 className="text-3xl font-semibold">{isAdmin ? "Developer Mode" : user.role === "Manager" ? "Menu & Staff" : "My Password"}</h1>
+            <h1 className="text-3xl font-semibold">{isAdmin ? "Developer Mode" : user.role === "Manager" ? "Menu Management" : "My Password"}</h1>
           </div>
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
@@ -437,20 +320,34 @@ const Developer = () => {
                 }
                 className="field"
               />
+              <div className="relative h-10 self-start">
+                <select
+                  required
+                  aria-label="Category"
+                  value={newItem.category}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, category: e.target.value })
+                  }
+                  className="field w-full"
+                >
+                  <option value="">Category</option>
+                  {catalog.categories
+                    .filter((category) => !isSpecialCategory(category))
+                    .map((category) => (
+                      <option key={category}>{category}</option>
+                    ))}
+                </select>
+              </div>
               <select
-                required
-                value={newItem.category}
+                aria-label="Diet"
+                value={newItem.diet}
                 onChange={(e) =>
-                  setNewItem({ ...newItem, category: e.target.value })
+                  setNewItem({ ...newItem, diet: e.target.value })
                 }
-                className="field"
+                className="field w-full"
               >
-                <option value="">Category</option>
-                {catalog.categories
-                  .filter((category) => !isSpecialCategory(category))
-                  .map((category) => (
-                    <option key={category}>{category}</option>
-                  ))}
+                <option value="veg">Vegetarian</option>
+                <option value="non-veg">Non-vegetarian</option>
               </select>
               <input
                 required
@@ -463,6 +360,16 @@ const Developer = () => {
                 }
                 className="field"
               />
+              <label className="flex items-center gap-2 text-sm text-[#ababab]">
+                <input
+                  type="checkbox"
+                  checked={newItem.favorite}
+                  onChange={(e) =>
+                    setNewItem({ ...newItem, favorite: e.target.checked })
+                  }
+                />
+                Favourite
+              </label>
               <input
                 placeholder="Variations: Small, Regular, Large, etc."
                 value={newItem.variationNames}
@@ -607,71 +514,6 @@ const Developer = () => {
               ))}
             </div>
           </section>}
-          {canManageStaff && (
-            <section className="rounded-[20px] bg-[#2a2a2a] p-5">
-              <h2 className="mb-4 text-xl font-semibold">{isAdmin ? "Users" : user.role === "Manager" ? "Staff passwords" : "My password"}</h2>
-              {isAdmin && <>
-              <form onSubmit={addUser} className="grid gap-2 sm:grid-cols-2">
-                <input
-                  required
-                  placeholder="Full name"
-                  value={newUser.name}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, name: e.target.value })
-                  }
-                  className="field"
-                />
-                <input
-                  required
-                  placeholder="Username"
-                  value={newUser.username}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, username: e.target.value })
-                  }
-                  className="field"
-                />
-                <input
-                  required
-                  type="password"
-                  placeholder="Password"
-                  value={newUser.password}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, password: e.target.value })
-                  }
-                  className="field"
-                />
-                <select
-                  value={newUser.role}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, role: e.target.value })
-                  }
-                  className="field"
-                >
-                  <option>Cashier</option>
-                  <option>Admin</option>
-                  <option>Manager</option>
-                  <option>Assistant Manager</option>
-                </select>
-                <button className="rounded-[10px] bg-[#d3d3d3] px-3 py-2 text-sm font-semibold text-[#1a1a1a] sm:col-span-2">
-                  Add user
-                </button>
-              </form>
-              </>}
-              <div className="mt-4 space-y-2 text-sm">
-                {users.map((candidate) => (
-                  <div key={candidate.username} className="flex items-center justify-between gap-3 rounded-[10px] bg-[#3a3a3a] px-3 py-3">
-                    <button type="button" onClick={() => openEditUser(candidate)} className="min-w-0 flex-1 text-left hover:text-white">
-                      <span className="block truncate font-medium">{candidate.name}</span>
-                      <span className="block truncate text-xs text-[#ababab]">{isAdmin || user.role === "Manager" ? `@${candidate.username} · ${candidate.role}` : "Change your password"}</span>
-                    </button>
-                    {isAdmin && <button type="button" onClick={() => deleteUser(candidate.username)} className="flex size-9 shrink-0 items-center justify-center rounded-[8px] text-[#f08080] hover:bg-[#f08080] hover:text-[#1a1a1a]" aria-label={`Delete ${candidate.name}`} title="Delete user">
-                      <FaTrashCan />
-                    </button>}
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
         </div>
         {isAdmin && (
           <section className="mt-4 rounded-[20px] border border-[#553838] bg-[#2a2a2a] p-5">
@@ -688,28 +530,6 @@ const Developer = () => {
               Reset bill numbering
             </button>
           </section>
-        )}
-        {editingUser && userDraft && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="edit-user-title">
-            <form onSubmit={saveEditedUser} className="w-full max-w-lg rounded-[20px] bg-[#2a2a2a] p-5 shadow-2xl">
-              <div className="mb-5 flex items-center justify-between">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.16em] text-[#ababab]">User details</p>
-                  <h2 id="edit-user-title" className="text-xl font-semibold">Edit {editingUser.name}</h2>
-                </div>
-                <button type="button" onClick={() => { setEditingUser(null); setUserDraft(null); }} className="rounded-full p-2 text-xl text-[#ababab] hover:bg-[#3a3a3a]" aria-label="Close user details">&times;</button>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {isAdmin && <>
-                  <label className="grid gap-1 text-sm text-[#ababab]">Full name<input required value={userDraft.name || ""} onChange={(event) => setUserDraft({ ...userDraft, name: event.target.value })} className="field" /></label>
-                  <label className="grid gap-1 text-sm text-[#ababab]">Username<input required value={userDraft.username || ""} onChange={(event) => setUserDraft({ ...userDraft, username: event.target.value })} className="field" /></label>
-                  <label className="grid gap-1 text-sm text-[#ababab] sm:col-span-2">Role<select value={userDraft.role || "Cashier"} onChange={(event) => setUserDraft({ ...userDraft, role: event.target.value })} className="field"><option>Cashier</option><option>Admin</option><option>Manager</option><option>Assistant Manager</option></select></label>
-                </>}
-                <label className={`grid gap-1 text-sm text-[#ababab] ${isAdmin ? "sm:col-span-2" : ""}`}>New password<input required={!isAdmin} type="password" value={userDraft.newPassword || ""} onChange={(event) => setUserDraft({ ...userDraft, newPassword: event.target.value })} placeholder={isAdmin ? "Leave blank to keep current" : "Enter new password"} className="field" /></label>
-              </div>
-              <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setEditingUser(null); setUserDraft(null); }} className="rounded-[10px] border border-[#555] px-4 py-2 text-sm font-semibold text-[#d3d3d3]">Cancel</button><button type="submit" className="rounded-[10px] bg-[#d3d3d3] px-4 py-2 text-sm font-semibold text-[#1a1a1a]">{isAdmin ? "Save details" : "Change password"}</button></div>
-            </form>
-          </div>
         )}
         {editingItem && editDraft && (
           <div
@@ -767,21 +587,23 @@ const Developer = () => {
                 </label>
                 <label className="grid gap-1 text-sm text-[#ababab]">
                   Category
-                  <select
-                    required
-                    value={editDraft.category}
-                    onChange={(event) =>
-                      updateEditDraft({ category: event.target.value })
-                    }
-                    className="field"
-                  >
-                    <option value="">Category</option>
-                    {catalog.categories
-                      .filter((category) => !isSpecialCategory(category))
-                      .map((category) => (
-                        <option key={category}>{category}</option>
-                      ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      required
+                      value={editDraft.category}
+                      onChange={(event) =>
+                        updateEditDraft({ category: event.target.value })
+                      }
+                      className="field w-full"
+                    >
+                      <option value="">Category</option>
+                      {catalog.categories
+                        .filter((category) => !isSpecialCategory(category))
+                        .map((category) => (
+                          <option key={category}>{category}</option>
+                        ))}
+                    </select>
+                  </div>
                 </label>
                 <label className="grid gap-1 text-sm text-[#ababab]">
                   Base price
@@ -798,16 +620,18 @@ const Developer = () => {
                 </label>
                 <label className="grid gap-1 text-sm text-[#ababab]">
                   Diet
-                  <select
-                    value={editDraft.diet || "veg"}
-                    onChange={(event) =>
-                      updateEditDraft({ diet: event.target.value })
-                    }
-                    className="field"
-                  >
-                    <option value="veg">Vegetarian</option>
-                    <option value="non-veg">Non-vegetarian</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={editDraft.diet || "veg"}
+                      onChange={(event) =>
+                        updateEditDraft({ diet: event.target.value })
+                      }
+                      className="field w-full"
+                    >
+                      <option value="veg">Vegetarian</option>
+                      <option value="non-veg">Non-vegetarian</option>
+                    </select>
+                  </div>
                 </label>
                 <label className="flex items-center gap-2 self-end pb-2 text-sm text-[#ababab]">
                   <input
@@ -866,7 +690,7 @@ const Developer = () => {
                       <button
                         type="button"
                         onClick={() => removeEditVariation(index)}
-                        className="flex size-10 items-center justify-center rounded-[10px] text-[#f08080] hover:bg-[#f08080] hover:text-[#1a1a1a]"
+                        className="flex size-[38px] shrink-0 items-center justify-center self-end rounded-[10px] text-[#f08080] hover:bg-[#f08080] hover:text-[#1a1a1a]"
                         aria-label={`Remove ${variation.name || "variation"}`}
                       >
                         <FaTrashCan />

@@ -386,52 +386,6 @@ const prepareCleanWindowsData = (app) => {
     return true;
 };
 
-const getDbTableData = (app, tableName) => {
-    const safeTable = normalizeIdentifier(tableName);
-    if (!safeTable) throw new Error("Invalid table name");
-    const db = initializeDatabase(app);
-    const columns = db.prepare(`PRAGMA table_info("${safeTable}")`).all();
-    const rows = db.prepare(`SELECT * FROM "${safeTable}" ORDER BY 1`).all();
-    return {
-        columns: columns.map((column) => ({ name: column.name, type: column.type, notnull: !!column.notnull, pk: !!column.pk })),
-        rows,
-    };
-};
-
-const insertDbRow = (app, { tableName, row = {} }) => {
-    const safeTable = normalizeIdentifier(tableName);
-    if (!safeTable) throw new Error("Invalid table name");
-    const columns = Object.keys(row || {}).filter((column) => normalizeIdentifier(column));
-    if (!columns.length) throw new Error("No columns provided");
-    const db = initializeDatabase(app);
-    const placeholders = columns.map(() => "?").join(", ");
-    const sql = `INSERT INTO "${safeTable}" (${columns.map((column) => `"${column}"`).join(", ")}) VALUES (${placeholders})`;
-    const info = db.prepare(sql).run(...columns.map((column) => row[column]));
-    return { ok: true, lastInsertId: info.lastInsertRowid };
-};
-
-const updateDbRow = (app, { tableName, idColumn, idValue, row = {} }) => {
-    const safeTable = normalizeIdentifier(tableName);
-    const safeIdColumn = normalizeIdentifier(idColumn);
-    if (!safeTable || !safeIdColumn) throw new Error("Invalid table or id column");
-    const columns = Object.keys(row || {}).filter((column) => normalizeIdentifier(column));
-    if (!columns.length) throw new Error("No columns provided");
-    const db = initializeDatabase(app);
-    const assignments = columns.map((column) => `"${column}" = ?`).join(", ");
-    const sql = `UPDATE "${safeTable}" SET ${assignments} WHERE "${safeIdColumn}" = ?`;
-    const info = db.prepare(sql).run(...columns.map((column) => row[column]), idValue);
-    return { ok: true, changes: info.changes };
-};
-
-const deleteDbRow = (app, { tableName, idColumn, idValue }) => {
-    const safeTable = normalizeIdentifier(tableName);
-    const safeIdColumn = normalizeIdentifier(idColumn);
-    if (!safeTable || !safeIdColumn) throw new Error("Invalid table or id column");
-    const db = initializeDatabase(app);
-    const info = db.prepare(`DELETE FROM "${safeTable}" WHERE "${safeIdColumn}" = ?`).run(idValue);
-    return { ok: true, changes: info.changes };
-};
-
 module.exports = {
     dbPath,
     defaultCatalog,
@@ -449,8 +403,4 @@ module.exports = {
     getCustomerByPhoneFromDb,
     updateCustomerNotesInDb,
     prepareCleanWindowsData,
-    getDbTableData,
-    insertDbRow,
-    updateDbRow,
-    deleteDbRow,
 };

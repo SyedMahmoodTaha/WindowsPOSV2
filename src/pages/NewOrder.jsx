@@ -7,13 +7,13 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { appendOrder, getNextBillNumber, getNextTokenNumber, printOrder, readOrders, updateOrder } from "../utils/orderStorage";
 import { readCatalog, readCatalogAsync, readTables, readTablesAsync } from "../utils/catalog";
 import { getCustomerByPhone, getCustomerId, normalizeCustomerPhone } from "../utils/customers";
-import { createDeliveryDispatch, ORDER_SCHEMA_VERSION } from "../utils/orderModel";
+import { createDeliveryDispatch, getFrequentlyUsedItems, ORDER_SCHEMA_VERSION } from "../utils/orderModel";
 const orderCharges = { Parcel: "", Takeaway: "", Delivery: "" };
 
 const formatCurrency = (amount) => new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
 }).format(amount);
 
 const orderTypeFields = {
@@ -105,24 +105,10 @@ const NewOrder = () => {
         "Frequently Used",
         ...catalog.categories.filter((category) => !["favourites", "favorites", "frequently used"].includes(String(category).toLowerCase())),
     ];
-    const frequentlyUsedItems = useMemo(() => {
-        const usageByProductId = new Map();
-        for (const order of orderHistory) {
-            if (order.status !== "completed") continue;
-            for (const item of Array.isArray(order.cart) ? order.cart : []) {
-                const productId = item.productId ?? getCartProductValue(item);
-                if (productId === undefined || productId === null) continue;
-                const quantity = Math.max(0, Number(item.quantity) || 0);
-                const key = String(productId);
-                usageByProductId.set(key, (usageByProductId.get(key) || 0) + quantity);
-            }
-        }
-        return menuItems
-            .map((item, index) => ({ item, index, count: usageByProductId.get(String(item.id)) || 0 }))
-            .filter(({ count }) => count > 0)
-            .sort((left, right) => right.count - left.count || left.index - right.index)
-            .map(({ item }) => item);
-    }, [menuItems, orderHistory]);
+    const frequentlyUsedItems = useMemo(
+        () => getFrequentlyUsedItems(menuItems, orderHistory),
+        [menuItems, orderHistory],
+    );
     const itemByCode = new Map(menuItems.filter((item) => String(item.code || "").trim()).map((item) => [String(item.code).trim(), item]));
 
     useEffect(() => {

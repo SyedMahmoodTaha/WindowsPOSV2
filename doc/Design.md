@@ -2,7 +2,7 @@
 
 ## Product Context
 
-Lassi Shop POS is an operational point-of-sale tool for taking counter, takeaway, parcel, delivery, and table orders. Its primary environment is a desktop Electron window used during service, with responsive layouts for smaller screens and a browser mode for development.
+Tyep is an operational point-of-sale tool for taking counter, takeaway, parcel, delivery, and table orders. Its primary environment is a desktop Electron window used during service, with responsive layouts for smaller screens and a browser mode for development.
 
 The interface should favor quick scanning and low-friction repeated actions. Order type, table occupancy, order status, item quantities, and totals need to remain legible at a glance. Admin and setup workflows are secondary to order entry and should not compete with it visually.
 
@@ -10,8 +10,8 @@ The interface should favor quick scanning and low-friction repeated actions. Ord
 
 - Sign-in is the unauthenticated entry point. The app redirects unauthenticated routes to `/Auth` and returns to the requested route after successful sign-in.
 - Home provides quick actions for new orders, tables, orders, and printer setup.
-- Admin users additionally see reporting, network sync, and developer/database tools.
-- Admin-only routes are `/admin-settings`, `/developer`, and `/sqlite-db-viewer`; non-admin users are redirected home.
+- Admin users additionally see reporting, network sync, and developer tools.
+- Admin-only routes are `/admin-settings` and `/developer`; non-admin users are redirected home.
 - Order entry can be opened with a preselected table, menu item, or existing order. Tables and Orders preserve a return path when opening an order.
 
 ## Key Workflows

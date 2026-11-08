@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { FaArrowLeft, FaWifi } from "react-icons/fa6";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { getCurrentUser } from "../utils/auth";
 import { getSyncSettings, setSyncSettings as persistSyncSettings } from "../utils/networkSync";
 
 const defaultSyncSettings = { enabled: false, mode: "host", host: "", port: 4099 };
 
 const NetworkSync = () => {
+    const location = useLocation();
+    const backPath = location.state?.from === "/more-settings" ? "/more-settings" : "/";
     const [settings, setSettings] = useState(defaultSyncSettings);
     const [status, setStatus] = useState({ hostRunning: false, clients: [], pendingClients: [], approvedClients: [] });
     const [message, setMessage] = useState("");
@@ -160,7 +162,7 @@ const NetworkSync = () => {
         <main className="min-h-screen bg-[#1f1f1f] px-4 py-6 text-[#f5f5f5] sm:px-6">
             <div className="mx-auto max-w-3xl">
                 <div className="mb-8 flex items-center gap-4">
-                    <Link to="/" className="rounded-full p-3 text-[#d3d3d3] hover:bg-[#d3d3d3] hover:text-[#1a1a1a]" aria-label="Back to home"><FaArrowLeft /></Link>
+                    <Link to={backPath} className="rounded-full p-3 text-[#d3d3d3] hover:bg-[#d3d3d3] hover:text-[#1a1a1a]" aria-label={backPath === "/more-settings" ? "Back to More Settings" : "Back to home"}><FaArrowLeft /></Link>
                     <div>
                         <p className="text-sm uppercase tracking-[0.2em] text-[#ababab]">Desktop setup</p>
                         <h1 className="text-3xl font-semibold">Network Sync</h1>

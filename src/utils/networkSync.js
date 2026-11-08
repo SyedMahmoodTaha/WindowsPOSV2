@@ -187,6 +187,7 @@ export const applySyncSnapshot = async (snapshot, persist = true) => {
     } else if (!window.pflDesktop) {
         localStorage.setItem("pfl-catalog-v1", JSON.stringify(snapshot.catalog));
         localStorage.setItem("pfl-tables-v1", JSON.stringify(snapshot.tables));
+        if (Array.isArray(snapshot.shopStaff)) localStorage.setItem("pfl-shop-staff-v1", JSON.stringify(snapshot.shopStaff));
     }
 
     try {
@@ -208,10 +209,12 @@ export const applySyncSnapshot = async (snapshot, persist = true) => {
 
     localStorage.setItem("pfl-catalog-v1", JSON.stringify(snapshot.catalog));
     localStorage.setItem("pfl-tables-v1", JSON.stringify(snapshot.tables));
+    if (Array.isArray(snapshot.shopStaff)) localStorage.setItem("pfl-shop-staff-v1", JSON.stringify(snapshot.shopStaff));
     localStorage.setItem("pfl-orders-v2", JSON.stringify(snapshot.orders));
     localStorage.setItem("pfl-printer-settings-v1", JSON.stringify(snapshot.printerSettings));
     window.dispatchEvent(new Event("pfl-orders-updated"));
     window.dispatchEvent(new Event("pfl-catalog-updated"));
+    window.dispatchEvent(new Event("pfl-shop-staff-updated"));
     window.dispatchEvent(new Event("pfl-customers-updated"));
     window.dispatchEvent(new Event("pfl-printer-settings-updated"));
     sendPendingUpdates();

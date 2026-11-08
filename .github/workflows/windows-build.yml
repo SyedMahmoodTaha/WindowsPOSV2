@@ -93,7 +93,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lassi-shop-pos-windows-installer
-          path: release/Lassi Shop POS Setup *.exe
+          path: release/Tyep Setup *.exe
           if-no-files-found: error
 
   build-db-viewer-windows:

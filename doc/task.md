@@ -6,7 +6,7 @@ This guide describes the main staff and administrator tasks supported by the cur
 
 ### Sign In
 
-1. Open Lassi Shop POS and enter the configured username and password.
+1. Open Tyep and enter the configured username and password.
 2. Confirm the correct landing route opens. A user without an active session is redirected to sign-in.
 3. Use the account role assigned by the administrator; admin-only pages are not available to cashier accounts.
 
@@ -60,7 +60,7 @@ npm run lint
 npm run build
 ```
 
-For desktop-specific verification, run `npm run desktop` after the build. Check sign-in and role restrictions, new order creation, table occupancy/settlement, active order completion, theme persistence, printer settings, report export, and database-viewer access as applicable to the change.
+For desktop-specific verification, run `npm run desktop` after the build. Check sign-in and role restrictions, new order creation, table occupancy/settlement, active order completion, theme persistence, printer settings, and report export as applicable to the change.
 
 For a Windows distribution, use `npm run dist`; for the macOS arm64 directory build, use `npm run build:mac`. Verify the generated artifact on the target OS because browser development does not exercise Electron printing, userData persistence, or packaged resource paths.
 

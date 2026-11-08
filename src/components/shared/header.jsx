@@ -3,7 +3,7 @@ import { FaSearch } from "react-icons/fa";
 import { FaUserCircle } from "react-icons/fa";
 import { FaSignOutAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { getCurrentUser, getLoginUsers, signOut } from "../../utils/auth";
+import { getCurrentUser, getLoginUsers, getMyAccount, signOut } from "../../utils/auth";
 import { readCatalogAsync } from "../../utils/catalog";
 import ThemeToggle from "./themeToggle";
 const logo = `${import.meta.env.BASE_URL}Logo.png`;
@@ -15,6 +15,25 @@ const Header = () => {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [catalog, setCatalog] = useState({ menuItems: [], categories: [] });
     const [users, setUsers] = useState([]);
+    const [profilePhoto, setProfilePhoto] = useState("");
+
+    useEffect(() => {
+        let active = true;
+        const refreshProfile = async () => {
+            try {
+                const account = await getMyAccount();
+                if (active) setProfilePhoto(account.staffProfile?.photo || "");
+            } catch (error) {
+                console.error("Could not load profile photo:", error);
+            }
+        };
+        void refreshProfile();
+        window.addEventListener("pfl-my-account-updated", refreshProfile);
+        return () => {
+            active = false;
+            window.removeEventListener("pfl-my-account-updated", refreshProfile);
+        };
+    }, []);
 
     useEffect(() => {
         const refreshSearchData = async () => {
@@ -107,7 +126,7 @@ const Header = () => {
         <div className="flex items-center justify-between gap-3 sm:justify-start">
             <div className="flex items-center gap-2">
                 <img src={logo} className="h-8 w-8" alt="Logo" />
-                <h1 className="text-base font-semibold text-[#f5f5f5] sm:text-lg">Lassi Shop</h1>
+                <h1 className="text-base font-semibold text-[#f5f5f5] sm:text-lg">Tyep</h1>
             </div>
         </div>
 
@@ -150,7 +169,9 @@ const Header = () => {
                         setIsProfileOpen((value) => !value);
                     }
                 }} className="flex cursor-pointer items-center gap-3 rounded-full px-2 py-1 text-left transition-colors hover:bg-[#2a2a2a]" aria-label="Open account menu">
-                    <FaUserCircle className="text-3xl text-[#f5f5f5] sm:text-4xl" />
+                    {profilePhoto
+                        ? <img src={profilePhoto} alt="" className="size-9 rounded-full object-cover sm:size-10" />
+                        : <FaUserCircle className="text-3xl text-[#f5f5f5] sm:text-4xl" />}
                     <div className="flex min-w-0 flex-col items-start">
                         <h1 className="max-w-[140px] truncate text-sm font-semibold text-[#f5f5f5] sm:max-w-none sm:text-base">{user?.name}</h1>
                         <p className="text-[10px] font-medium text-[#ababab] sm:text-xs">{user?.role}</p>
@@ -159,12 +180,21 @@ const Header = () => {
                 {isProfileOpen && (
                     <div className="absolute right-0 top-[calc(100%+12px)] z-50 w-[min(18rem,calc(100vw-2rem))] rounded-[18px] border border-[#3a3a3a] bg-[#1f1f1f] p-4 shadow-2xl">
                         <div className="mb-4 flex items-center gap-3 rounded-[12px] bg-[#2a2a2a] p-3">
-                            <FaUserCircle className="text-2xl text-[#d3d3d3]" />
+                            {profilePhoto
+                                ? <img src={profilePhoto} alt="" className="size-10 rounded-full object-cover" />
+                                : <FaUserCircle className="text-2xl text-[#d3d3d3]" />}
                             <div>
                                 <div className="font-semibold text-[#f5f5f5]">{user?.name}</div>
                                 <div className="text-xs text-[#ababab]">{user?.role}</div>
                             </div>
                         </div>
+                        <button type="button" onClick={() => {
+                            setIsProfileOpen(false);
+                            navigate("/my-account", { state: { from: "/" } });
+                        }} className="mb-3 flex w-full items-center gap-2 rounded-[12px] border border-[#444] px-3 py-2 text-sm text-[#f5f5f5] hover:bg-[#2a2a2a]">
+                            <FaUserCircle />
+                            My Account
+                        </button>
                         <div className="mb-3 flex items-center justify-between rounded-[12px] border border-[#444] bg-[#1f1f1f] px-3 py-2">
                             <span className="text-sm text-[#ababab]">Dark mode</span>
                             <ThemeToggle />

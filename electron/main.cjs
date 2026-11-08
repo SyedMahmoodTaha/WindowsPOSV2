@@ -9,7 +9,6 @@ const XLSX = require("xlsx");
 const {
     initializeDatabase,
     defaultCatalog,
-    listDbTables,
     getDatabaseSnapshot,
     replaceDatabaseSnapshot,
     getCatalogFromDb,
@@ -22,10 +21,6 @@ const {
     getCustomerByPhoneFromDb,
     updateCustomerNotesInDb,
     prepareCleanWindowsData,
-    getDbTableData,
-    insertDbRow,
-    updateDbRow,
-    deleteDbRow,
 } = require("./db-core.cjs");
 
 const envPath = app.isPackaged ? path.join(process.resourcesPath, ".env") : path.join(__dirname, "../.env");
@@ -78,6 +73,31 @@ const settingsPath = () => path.join(app.getPath("userData"), "printer-settings.
 const syncSettingsPath = () => path.join(app.getPath("userData"), "sync-settings.json");
 const syncClientsPath = () => path.join(app.getPath("userData"), "sync-clients.json");
 const usersPath = () => path.join(app.getPath("userData"), "users.json");
+const shopStaffPath = () => path.join(app.getPath("userData"), "shop-staff.json");
+const readShopStaff = () => {
+    try {
+        const staff = JSON.parse(fs.readFileSync(shopStaffPath(), "utf8"));
+        if (!Array.isArray(staff)) throw new Error("shop-staff.json must contain an array");
+        return staff.map((member) => normalizeShopStaff(member));
+    } catch (error) {
+        if (error.code === "ENOENT") return [];
+        console.error("Could not read shop-staff.json:", error.message);
+        throw error;
+    }
+};
+const writeShopStaff = (staff) => {
+    if (!Array.isArray(staff)) throw new Error("Shop staff must be a list.");
+    const targetPath = shopStaffPath();
+    const temporaryPath = `${targetPath}.tmp`;
+    try {
+        fs.writeFileSync(temporaryPath, JSON.stringify(staff.map((member) => normalizeShopStaff(member)), null, 2), { encoding: "utf8", mode: 0o600 });
+        fs.renameSync(temporaryPath, targetPath);
+        return staff;
+    } catch (error) {
+        try { fs.rmSync(temporaryPath, { force: true }); } catch {}
+        throw error;
+    }
+};
 const readSyncSettings = () => {
     try {
         const saved = JSON.parse(fs.readFileSync(syncSettingsPath(), "utf8"));
@@ -141,11 +161,6 @@ const requireAuthenticatedUser = (event, roles) => {
     if (roles && !roles.includes(user.role)) throw new Error("Your account is not permitted to perform this operation.");
     return user;
 };
-const requireSyncHost = () => {
-    if (readSyncSettings().mode === "client") {
-        throw new Error("Make database viewer changes on the sync host.");
-    }
-};
 const canManageUserTarget = (currentUser, target) => {
     if (currentUser.role === "Admin") return true;
     if (currentUser.role === "Manager") {
@@ -153,11 +168,52 @@ const canManageUserTarget = (currentUser, target) => {
     }
     return currentUser.role === "Assistant Manager" && target.username === currentUser.username;
 };
-const publicUser = (user) => ({
+const normalizeStaffProfile = (profile = {}) => {
+    if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
+        throw new Error("Staff profile must be an object.");
+    }
+    const fields = ["phone", "address", "email", "emergencyContact", "notes"];
+    const limits = { phone: 50, address: 500, email: 254, emergencyContact: 200, notes: 2000 };
+    const normalized = {};
+    for (const field of fields) {
+        const value = profile[field] ?? "";
+        if (typeof value !== "string" || value.length > limits[field]) {
+            throw new Error(`Staff ${field} must be ${limits[field]} characters or fewer.`);
+        }
+        normalized[field] = value.trim();
+    }
+    const photo = profile.photo ?? "";
+    if (typeof photo !== "string" || photo.length > 1_400_000
+        || (photo && !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(photo))) {
+        throw new Error("Staff photo must be a PNG, JPEG, or WebP image smaller than 1 MB.");
+    }
+    normalized.photo = photo;
+    return normalized;
+};
+const normalizeShopStaff = (member) => {
+    if (!member || typeof member !== "object" || Array.isArray(member)) {
+        throw new Error("Shop staff member must be an object.");
+    }
+    const id = typeof member.id === "string" ? member.id.trim() : "";
+    const name = typeof member.name === "string" ? member.name.trim() : "";
+    const jobTitle = typeof member.jobTitle === "string" ? member.jobTitle.trim() : "";
+    if (!id || id.length > 100 || !name || name.length > 120 || !jobTitle || jobTitle.length > 120) {
+        throw new Error("Shop staff requires a valid ID, name, and job title.");
+    }
+    return {
+        id,
+        memberType: "shop-staff",
+        name,
+        jobTitle,
+        staffProfile: normalizeStaffProfile(member.staffProfile),
+    };
+};
+const publicUser = (user, includeStaffProfile = false) => ({
     name: user.name,
     username: user.username,
     role: user.role,
     originalUsername: user.originalUsername || user.username,
+    ...(includeStaffProfile ? { memberType: "pos-user", staffProfile: normalizeStaffProfile(user.staffProfile) } : {}),
 });
 const setManagedUsers = (event, users) => {
     const currentUser = requireAuthenticatedUser(event, ["Admin", "Manager", "Assistant Manager"]);
@@ -173,7 +229,15 @@ const setManagedUsers = (event, users) => {
             const existing = existingUsers.find((candidate) => candidate.originalUsername === originalUsername || candidate.username === originalUsername);
             const password = typeof user.password === "string" && user.password.length ? user.password : existing?.password;
             if (!user.username || !user.name || !password) throw new Error(`Name, username, and password are required for ${user.username || "each account"}.`);
-            return { ...user, password, originalUsername };
+            if (!["Admin", "Manager", "Assistant Manager", "Cashier"].includes(user.role)) {
+                throw new Error(`Unsupported POS user role for ${user.username}.`);
+            }
+            return {
+                ...user,
+                password,
+                originalUsername,
+                staffProfile: normalizeStaffProfile(user.staffProfile ?? existing?.staffProfile),
+            };
         });
         if (new Set(updatedUsers.map((user) => user.username)).size !== updatedUsers.length) {
             throw new Error("Usernames must be unique.");
@@ -182,7 +246,7 @@ const setManagedUsers = (event, users) => {
         const updatedCurrentUser = updatedUsers.find((user) => user.originalUsername === currentUser.username || user.username === currentUser.username);
         if (updatedCurrentUser) authenticatedUsers.set(event.sender.id, { username: updatedCurrentUser.username, role: updatedCurrentUser.role });
         broadcastSyncState();
-        return updatedUsers.map(publicUser);
+        return updatedUsers.map((user) => publicUser(user, true));
     }
 
     const manageableUsers = existingUsers.filter((target) => canManageUserTarget(currentUser, target));
@@ -773,7 +837,9 @@ const createSyncSnapshot = (ackUpdateId = "") => {
             role: user.role,
             originalUsername: user.originalUsername || user.username,
             passwordHash: user.passwordHash || passwordHashForSync(user.username, user.password),
+            staffProfile: normalizeStaffProfile(user.staffProfile),
         })),
+        shopStaff: readShopStaff(),
         printerSettings: {
             receiptOptions: printerSettings.receiptOptions,
             billTemplates: printerSettings.billTemplates,
@@ -805,11 +871,15 @@ const applySyncSnapshot = (snapshot) => {
             role: user.role,
             originalUsername: user.originalUsername || user.username,
             passwordHash: user.passwordHash,
+            staffProfile: normalizeStaffProfile(user.staffProfile),
         };
     });
-
+    const shopStaff = Array.isArray(snapshot.shopStaff)
+        ? snapshot.shopStaff.map((member) => normalizeShopStaff(member))
+        : [];
     replaceDatabaseSnapshot(app, snapshot.databaseTables);
     writeUsers(users);
+    writeShopStaff(shopStaff);
     for (const [senderId, currentUser] of authenticatedUsers.entries()) {
         const updatedUser = users.find((user) => user.originalUsername === currentUser.username || user.username === currentUser.username);
         if (updatedUser) authenticatedUsers.set(senderId, { username: updatedUser.username, role: updatedUser.role });
@@ -872,6 +942,8 @@ const applyClientSyncUpdate = (payload) => {
         saveCatalogToDb(app, payload.catalog);
     } else if (payload?.type === "tables-sync" && Array.isArray(payload.tables)) {
         saveTablesToDb(app, payload.tables);
+    } else if (payload?.type === "shop-staff-sync" && Array.isArray(payload.staff)) {
+        writeShopStaff(payload.staff);
     } else if (payload?.type === "customer-notes-sync"
         && typeof payload.customerId === "string"
         && payload.customerId.startsWith("phone:")
@@ -1131,35 +1203,6 @@ const createWindow = () => {
     return window;
 };
 
-const createDbViewerWindow = () => {
-    if (global.dbViewerWindow && !global.dbViewerWindow.isDestroyed()) {
-        global.dbViewerWindow.show();
-        global.dbViewerWindow.focus();
-        return global.dbViewerWindow;
-    }
-
-    const dbViewerWindow = new BrowserWindow({
-        width: 1200,
-        height: 800,
-        show: false,
-        backgroundColor: "#1f1f1f",
-        title: "PFL SQLite Database Viewer",
-        webPreferences: {
-            preload: path.join(__dirname, "preload.cjs"),
-            contextIsolation: true,
-            nodeIntegration: false,
-        },
-    });
-
-    global.dbViewerWindow = dbViewerWindow;
-    dbViewerWindow.once("ready-to-show", () => dbViewerWindow.show());
-    dbViewerWindow.on("closed", () => {
-        global.dbViewerWindow = null;
-    });
-    dbViewerWindow.loadFile(path.join(__dirname, "../dist/index.html"), { hash: "/sqlite-db-viewer" });
-    return dbViewerWindow;
-};
-
 const printOrder = async (event, { html, order, destination }) => {
     const printer = await resolvePrinterSetting(event, destination);
     const networkPrinter = typeof printer === "object" && printer && printer.host
@@ -1204,7 +1247,7 @@ const printOrder = async (event, { html, order, destination }) => {
 };
 
 app.whenReady().then(() => {
-    app.setName("Lassi Shop POS");
+    app.setName("Tyep");
     if (process.platform === "darwin" && app.dock) {
         const iconPath = path.join(app.getAppPath(), "build", "app-icon.png");
         app.dock.setIcon(nativeImage.createFromPath(iconPath));
@@ -1223,11 +1266,72 @@ app.whenReady().then(() => {
     ipcMain.handle("pfl:sign-out", (event) => authenticatedUsers.delete(event.sender.id));
     ipcMain.handle("pfl:get-users", (event) => {
         const currentUser = requireAuthenticatedUser(event, ["Admin", "Manager", "Assistant Manager"]);
-        return readUsers().filter((user) => canManageUserTarget(currentUser, user)).map(publicUser);
+        return readUsers().filter((user) => canManageUserTarget(currentUser, user)).map((user) => publicUser(user));
     });
     ipcMain.handle("pfl:get-login-users", (event) => {
-        requireAuthenticatedUser(event);
-        return readUsers().map(publicUser);
+        const currentUser = requireAuthenticatedUser(event);
+        return readUsers()
+            .filter((user) => currentUser.role !== "Manager" || user.role !== "Admin")
+            .map((user) => publicUser(user));
+    });
+    ipcMain.handle("pfl:get-staff-users", (event) => {
+        const currentUser = requireAuthenticatedUser(event, ["Admin", "Manager"]);
+        return readUsers()
+            .filter((user) => user.name && user.username
+                && (currentUser.role !== "Manager" || user.role !== "Admin"))
+            .map((user) => publicUser(user, true));
+    });
+    ipcMain.handle("pfl:get-my-account", (event) => {
+        const currentUser = requireAuthenticatedUser(event);
+        const account = readUsers().find((user) => user.username === currentUser.username);
+        if (!account) throw new Error("Could not find your POS account.");
+        return publicUser(account, true);
+    });
+    ipcMain.handle("pfl:update-my-account", (event, changes) => {
+        const currentUser = requireAuthenticatedUser(event);
+        if (readSyncSettings().mode === "client") {
+            throw new Error("Update your profile on the sync host. Changes will be available on this device after it reconnects.");
+        }
+        if (!changes || typeof changes !== "object" || Array.isArray(changes)) {
+            throw new Error("Account details are invalid.");
+        }
+        const name = typeof changes.name === "string" ? changes.name.trim() : "";
+        if (!name || name.length > 120) throw new Error("Name is required and must be 120 characters or fewer.");
+        const staffProfile = normalizeStaffProfile(changes.staffProfile);
+        if (changes.password !== undefined
+            && (typeof changes.password !== "string" || changes.password.length > 256)) {
+            throw new Error("Password must be 256 characters or fewer.");
+        }
+        const users = readUsers();
+        const accountIndex = users.findIndex((user) => user.username === currentUser.username);
+        if (accountIndex < 0) throw new Error("Could not find your POS account.");
+        users[accountIndex] = {
+            ...users[accountIndex],
+            name,
+            staffProfile,
+            ...(changes.password ? { password: changes.password } : {}),
+        };
+        writeUsers(users);
+        broadcastSyncState();
+        return publicUser(users[accountIndex], true);
+    });
+    ipcMain.handle("pfl:get-shop-staff", (event) => {
+        requireAuthenticatedUser(event, ["Admin", "Manager"]);
+        return readShopStaff();
+    });
+    ipcMain.handle("pfl:set-shop-staff", (event, staff) => {
+        requireAuthenticatedUser(event, ["Admin"]);
+        if (readSyncSettings().mode === "client") {
+            throw new Error("Manage shop staff on the sync host. Changes will be available on this device after it reconnects.");
+        }
+        if (!Array.isArray(staff)) throw new Error("Shop staff must be a list.");
+        const normalized = staff.map((member) => normalizeShopStaff(member));
+        if (new Set(normalized.map((member) => member.id)).size !== normalized.length) {
+            throw new Error("Shop staff IDs must be unique.");
+        }
+        writeShopStaff(normalized);
+        broadcastSyncState();
+        return normalized;
     });
     ipcMain.handle("pfl:set-users", setManagedUsers);
     ipcMain.handle("pfl:print-order", printOrder);
@@ -1332,18 +1436,6 @@ app.whenReady().then(() => {
         return saved;
     });
     ipcMain.handle("pfl:prepare-clean-windows-data", () => prepareCleanWindowsData(app));
-    ipcMain.handle("pfl:open-db-viewer-window", (event) => {
-        requireAuthenticatedUser(event, ["Admin"]);
-        return createDbViewerWindow();
-    });
-    ipcMain.handle("pfl:get-db-tables", (event) => {
-        requireAuthenticatedUser(event, ["Admin"]);
-        return listDbTables(app);
-    });
-    ipcMain.handle("pfl:get-db-table", (event, tableName) => {
-        requireAuthenticatedUser(event, ["Admin"]);
-        return getDbTableData(app, tableName);
-    });
     ipcMain.handle("pfl:get-sync-settings", () => readSyncSettings());
     ipcMain.handle("pfl:apply-sync-state", (event, snapshot) => applySyncSnapshot(snapshot));
     ipcMain.handle("pfl:get-sync-status", (event) => {
@@ -1457,39 +1549,6 @@ app.whenReady().then(() => {
         }
 
         return nextOrders;
-    });
-    ipcMain.handle("pfl:insert-db-row", (event, payload) => {
-        requireAuthenticatedUser(event, ["Admin"]);
-        requireSyncHost();
-        try {
-            const result = insertDbRow(app, payload || {});
-            broadcastSyncState();
-            return result;
-        } catch (error) {
-            return { ok: false, error: error.message };
-        }
-    });
-    ipcMain.handle("pfl:update-db-row", (event, payload) => {
-        requireAuthenticatedUser(event, ["Admin"]);
-        requireSyncHost();
-        try {
-            const result = updateDbRow(app, payload || {});
-            broadcastSyncState();
-            return result;
-        } catch (error) {
-            return { ok: false, error: error.message };
-        }
-    });
-    ipcMain.handle("pfl:delete-db-row", (event, payload) => {
-        requireAuthenticatedUser(event, ["Admin"]);
-        requireSyncHost();
-        try {
-            const result = deleteDbRow(app, payload || {});
-            broadcastSyncState();
-            return result;
-        } catch (error) {
-            return { ok: false, error: error.message };
-        }
     });
     initializeDatabase(app);
     const savedSyncSettings = readSyncSettings();
