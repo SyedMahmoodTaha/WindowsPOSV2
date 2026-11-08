@@ -48,6 +48,8 @@ The current POS source stores its database and account/settings files under `%AP
 
 In New Order, Favourites and Frequently Used stay pinned above other categories. Frequently Used ranks products by quantity in completed orders. Bill and token numbers roll over at 03:00 local time. If saved orders remain open or carts are held, closing the POS prompts before it exits; Close Anyway does not settle or complete them.
 
+Developer Mode now supports removing menu categories while moving their products to a remaining category. Global search can find any account from a cashier or manager session; selecting one signs out and still requires that account's password. New orders require an order type before Save or KOT, and the Inventory page currently displays a Coming soon placeholder. Admin reports include order status/type, item quantity, and busiest-hour breakdowns.
+
 ## Local development
 
 Use Node.js 20 on Windows. Copy `.env.example` to `.env` in the POS root and set local account credentials, then run:

@@ -15,6 +15,8 @@ import {
 } from "../utils/catalog";
 import { resetBillSequence } from "../utils/orderStorage";
 
+const isSpecialCategory = (category) => ["favourites", "favorites", "all", "frequently used"].includes(String(category).toLowerCase());
+
 const Developer = () => {
   const user = getCurrentUser();
   const [catalog, setCatalog] = useState(readCatalog);
@@ -209,7 +211,16 @@ const Developer = () => {
   const addCategory = async (event) => {
     event.preventDefault();
     const category = newCategory.trim();
-    if (category && !catalog.categories.includes(category)) {
+    if (!category) return;
+    if (isSpecialCategory(category)) {
+      setMessage("That category name is reserved by the POS.");
+      return;
+    }
+    if (catalog.categories.some((candidate) => candidate.toLowerCase() === category.toLowerCase())) {
+      setMessage("That category already exists.");
+      return;
+    }
+    if (category) {
       const saved = await updateCatalog({
         ...catalog,
         categories: [...catalog.categories, category],
@@ -217,6 +228,38 @@ const Developer = () => {
       if (!saved) return;
     }
     setNewCategory("");
+  };
+  const deleteCategory = async (category) => {
+    const categoryKey = category.toLowerCase();
+    const fallbackCategory = catalog.categories.find((candidate) =>
+      !isSpecialCategory(candidate)
+      && candidate.toLowerCase() !== categoryKey,
+    );
+    const affectedItems = catalog.menuItems.filter((item) => String(item.category || "").toLowerCase() === categoryKey);
+    if (affectedItems.length > 0 && !fallbackCategory && categoryKey === "uncategorized") {
+      setMessage("Add another category before deleting Uncategorized items.");
+      return;
+    }
+
+    const nextFallbackCategory = fallbackCategory || "Uncategorized";
+    const confirmation = affectedItems.length
+      ? `Delete "${category}"? ${affectedItems.length} menu item${affectedItems.length === 1 ? "" : "s"} will be moved to "${nextFallbackCategory}".`
+      : `Delete "${category}"?`;
+    if (!window.confirm(confirmation)) return;
+
+    const nextCategories = catalog.categories.filter((candidate) => candidate.toLowerCase() !== categoryKey);
+    if (affectedItems.length > 0 && !nextCategories.some((candidate) => candidate.toLowerCase() === nextFallbackCategory.toLowerCase())) {
+      nextCategories.push(nextFallbackCategory);
+    }
+    await updateCatalog({
+      ...catalog,
+      categories: nextCategories,
+      menuItems: catalog.menuItems.map((item) => (
+        String(item.category || "").toLowerCase() === categoryKey
+          ? { ...item, category: nextFallbackCategory }
+          : item
+      )),
+    });
   };
   const addTable = async (event) => {
     event.preventDefault();
@@ -404,9 +447,7 @@ const Developer = () => {
               >
                 <option value="">Category</option>
                 {catalog.categories
-                  .filter(
-                    (category) => !["Favourites", "All"].includes(category),
-                  )
+                  .filter((category) => !isSpecialCategory(category))
                   .map((category) => (
                     <option key={category}>{category}</option>
                   ))}
@@ -512,13 +553,22 @@ const Developer = () => {
             </form>
             <div className="mt-4 flex flex-wrap gap-2">
               {catalog.categories
-                .filter((category) => !["Favourites", "All"].includes(category))
+                .filter((category) => !isSpecialCategory(category))
                 .map((category) => (
                   <span
                     key={category}
-                    className="rounded-full bg-[#3a3a3a] px-3 py-2 text-sm"
+                    className="flex items-center gap-2 rounded-full bg-[#3a3a3a] px-3 py-2 text-sm"
                   >
                     {category}
+                    <button
+                      type="button"
+                      onClick={() => deleteCategory(category)}
+                      aria-label={`Delete category ${category}`}
+                      title="Delete category"
+                      className="flex size-5 items-center justify-center rounded-full text-[#f08080] hover:bg-[#f08080] hover:text-[#1a1a1a]"
+                    >
+                      <FaTrashCan className="size-3" />
+                    </button>
                   </span>
                 ))}
             </div>
@@ -727,9 +777,7 @@ const Developer = () => {
                   >
                     <option value="">Category</option>
                     {catalog.categories
-                      .filter(
-                        (category) => !["Favourites", "All"].includes(category),
-                      )
+                      .filter((category) => !isSpecialCategory(category))
                       .map((category) => (
                         <option key={category}>{category}</option>
                       ))}

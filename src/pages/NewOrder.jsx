@@ -71,6 +71,7 @@ const NewOrder = () => {
     const [orderHistory, setOrderHistory] = useState(readOrders);
     const [selectedCategory, setSelectedCategory] = useState("Favourites");
     const [orderType, setOrderType] = useState("");
+    const [orderTypeError, setOrderTypeError] = useState("");
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [summaryOpen, setSummaryOpen] = useState(false);
     const [orderDetails, setOrderDetails] = useState({});
@@ -185,8 +186,9 @@ const NewOrder = () => {
             setIsEditingExistingOrder(true);
             originalCartRef.current = existingOrder.cart.map((item) => ({ ...item }));
             setCart(existingOrder.cart);
-            setOrderType(existingOrder.orderType);
-            setOrderDetails(getOrderDetailsForType(existingOrder.orderType, existingOrder.orderDetails || {}));
+            const existingOrderType = existingOrder.orderType === "Unassigned" ? "" : existingOrder.orderType;
+            setOrderType(existingOrderType);
+            setOrderDetails(getOrderDetailsForType(existingOrderType, existingOrder.orderDetails || {}));
             setCharges(existingOrder.charges || orderCharges);
             setOrderNote(existingOrder.orderNote || "");
         }
@@ -362,6 +364,7 @@ const NewOrder = () => {
 
     const changeOrderType = (type) => {
         setOrderType(type);
+        setOrderTypeError("");
         setOrderDetails(getOrderDetailsForType(type, orderDetails));
         setCharges(orderCharges);
         setDetailsOpen(false);
@@ -475,6 +478,10 @@ const NewOrder = () => {
 
     const completeOrder = (status, destination = null) => {
         if (cart.length === 0) return;
+        if (!orderType) {
+            setOrderTypeError("Choose Table, Parcel / Takeaway, or Delivery before saving or sending a KOT.");
+            return;
+        }
 
         const order = {
             ...(existingOrderRef.current || {}),
@@ -483,7 +490,7 @@ const NewOrder = () => {
             orderNumber: existingOrderRef.current?.orderNumber || getNextBillNumber(),
             tokenNumber: existingOrderRef.current?.tokenNumber || getNextTokenNumber(),
             cart,
-            orderType: orderType || "Unassigned",
+            orderType,
             orderDetails,
             ...(getCustomerId(orderDetails.phone) ? { customerId: getCustomerId(orderDetails.phone) } : {}),
             ...(orderType === "Delivery" ? {
@@ -703,6 +710,11 @@ const NewOrder = () => {
                                 </div>
                             )}
                         </section>
+                        {(orderTypeError || (cart.length > 0 && !orderType)) && (
+                            <p className="rounded-[12px] border border-[#f08080]/40 bg-[#f08080]/10 px-3 py-2 text-sm text-[#f08080]" role="alert">
+                                {orderTypeError || "Select an order type to enable Save and KOT."}
+                            </p>
+                        )}
 
                         {orderType && orderType !== "Table" && (
                             <section
@@ -888,9 +900,9 @@ const NewOrder = () => {
                                     <span>{formatCurrency(total)}</span>
                                 </div>
                                 <div className="grid grid-cols-6 gap-1">
-                                    <button type="button" onClick={() => completeOrder("saved")} disabled={cart.length === 0 && !isEditingExistingOrder} className="col-span-2 rounded-[10px] bg-[#d3d3d3] px-1 py-1 text-xs font-semibold text-[#1a1a1a] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">Save</button>
+                                    <button type="button" onClick={() => completeOrder("saved")} disabled={!orderType || (cart.length === 0 && !isEditingExistingOrder)} className="col-span-2 rounded-[10px] bg-[#d3d3d3] px-1 py-1 text-xs font-semibold text-[#1a1a1a] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">Save</button>
                                     <button type="button" onClick={() => completeOrder("saved", "cashier")} disabled={!canPrint || (cart.length === 0 && !isEditingExistingOrder)} className="col-span-2 rounded-[10px] bg-[#d3d3d3] px-1 py-1 text-xs font-semibold text-[#1a1a1a] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">Save &amp; Print</button>
-                                    <button type="button" onClick={() => completeOrder("kot")} disabled={cart.length === 0 && !isEditingExistingOrder} className="col-span-2 rounded-[10px] bg-[#3a3a3a] px-1 py-1 text-xs font-semibold text-[#f5f5f5] transition-colors hover:bg-[#d3d3d3] hover:text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-40">KOT</button>
+                                    <button type="button" onClick={() => completeOrder("kot")} disabled={!orderType || (cart.length === 0 && !isEditingExistingOrder)} className="col-span-2 rounded-[10px] bg-[#3a3a3a] px-1 py-1 text-xs font-semibold text-[#f5f5f5] transition-colors hover:bg-[#d3d3d3] hover:text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-40">KOT</button>
                                     <button type="button" onClick={() => completeOrder("kot", "kitchen")} disabled={!canPrint || (cart.length === 0 && !isEditingExistingOrder)} className="col-span-3 rounded-[10px] bg-[#3a3a3a] px-1 py-1 text-xs font-semibold text-[#f5f5f5] transition-colors hover:bg-[#d3d3d3] hover:text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-40">KOT &amp; Print</button>
                                     <button type="button" onClick={holdCurrentOrder} disabled={cart.length === 0} className="col-span-3 flex items-center justify-center gap-1 rounded-[10px] border border-[#555555] px-1 py-1 text-xs font-semibold text-[#d3d3d3] transition-colors hover:bg-[#3a3a3a] disabled:cursor-not-allowed disabled:opacity-40">Hold</button>
                                 </div>

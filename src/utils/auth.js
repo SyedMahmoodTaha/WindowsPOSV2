@@ -59,6 +59,11 @@ export const getManageableUsers = async () => {
         .map(safeUser);
 };
 
+export const getLoginUsers = async () => {
+    if (window.pflDesktop) return window.pflDesktop.getLoginUsers();
+    return readUsers();
+};
+
 const saveUsersInBrowser = (users) => {
     const currentUser = getCurrentUser();
     if (!Array.isArray(users)) throw new Error("Users must be a list");

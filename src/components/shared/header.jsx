@@ -3,7 +3,7 @@ import { FaSearch } from "react-icons/fa";
 import { FaUserCircle } from "react-icons/fa";
 import { FaSignOutAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { getCurrentUser, getManageableUsers, readUsers, signOut } from "../../utils/auth";
+import { getCurrentUser, getLoginUsers, signOut } from "../../utils/auth";
 import { readCatalogAsync } from "../../utils/catalog";
 import ThemeToggle from "./themeToggle";
 const logo = `${import.meta.env.BASE_URL}Logo.png`;
@@ -20,8 +20,12 @@ const Header = () => {
         const refreshSearchData = async () => {
             const nextCatalog = await readCatalogAsync();
             setCatalog(nextCatalog || { menuItems: [], categories: [] });
-            const nextUsers = await getManageableUsers().catch(() => readUsers());
-            setUsers(nextUsers || readUsers());
+            try {
+                setUsers(await getLoginUsers());
+            } catch (error) {
+                console.error("Could not load accounts for global search:", error);
+                setUsers([]);
+            }
         };
 
         void refreshSearchData();
@@ -46,6 +50,7 @@ const Header = () => {
             { label: "New Order", path: "/new-order", section: "Navigate" },
             { label: "Tables", path: "/Tables", section: "Navigate" },
             { label: "Orders", path: "/Orders", section: "Navigate" },
+            { label: "Inventory", path: "/inventory", section: "Navigate" },
             { label: "Printer Settings", path: "/settings", section: "Settings" },
             ...(user?.role === "Admin" ? [{ label: "Network Sync", path: "/network-sync", section: "Settings" }] : []),
             { label: "Bill Printing Preferences", path: "/bill-printing-preferences", section: "Settings" },
@@ -84,6 +89,7 @@ const Header = () => {
         setSearchQuery("");
         if (result.path) {
             if (result.user) {
+                signOut();
                 navigate(result.path, { state: { from: "/", selectedUsername: result.user.username } });
                 return;
             }

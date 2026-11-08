@@ -1225,6 +1225,10 @@ app.whenReady().then(() => {
         const currentUser = requireAuthenticatedUser(event, ["Admin", "Manager", "Assistant Manager"]);
         return readUsers().filter((user) => canManageUserTarget(currentUser, user)).map(publicUser);
     });
+    ipcMain.handle("pfl:get-login-users", (event) => {
+        requireAuthenticatedUser(event);
+        return readUsers().map(publicUser);
+    });
     ipcMain.handle("pfl:set-users", setManagedUsers);
     ipcMain.handle("pfl:print-order", printOrder);
     ipcMain.handle("pfl:get-printers", async (event) => {

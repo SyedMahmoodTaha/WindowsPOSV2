@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld("pflDesktop", {
     authenticate: (credentials) => ipcRenderer.invoke("pfl:authenticate", credentials),
     signOut: () => ipcRenderer.invoke("pfl:sign-out"),
     getUsers: () => ipcRenderer.invoke("pfl:get-users"),
+    getLoginUsers: () => ipcRenderer.invoke("pfl:get-login-users"),
     setUsers: (users) => ipcRenderer.invoke("pfl:set-users", users),
     printOrder: (payload) => ipcRenderer.invoke("pfl:print-order", payload),
     getPrinters: () => ipcRenderer.invoke("pfl:get-printers"),

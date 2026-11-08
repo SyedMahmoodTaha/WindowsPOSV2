@@ -199,7 +199,7 @@ const buildRecentSales = (orders) => {
             time: order.createdAt ? new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--",
             total: Number(order.total || 0),
             channel: order.orderType || "Walk-in",
-            cashier: order.orderDetails?.customerName || order.orderType || "System",
+            detail: order.orderDetails?.customerName || order.orderDetails?.tableNumber || order.status || "Order",
         }));
 };
 
@@ -252,8 +252,38 @@ const buildTopItems = (orders) => {
 
     return [...stats.values()]
         .sort((a, b) => b.sales - a.sales)
-        .slice(0, 4);
+        .slice(0, 10);
 };
+
+const buildOrderBreakdown = (orders, getLabel) => {
+    const breakdown = new Map();
+    orders.forEach((order) => {
+        const label = getLabel(order);
+        const entry = breakdown.get(label) || { label, orders: 0, total: 0 };
+        entry.orders += 1;
+        entry.total += Number(order.total || 0);
+        breakdown.set(label, entry);
+    });
+    return [...breakdown.values()].sort((left, right) => right.orders - left.orders || left.label.localeCompare(right.label));
+};
+
+const buildHourlyActivity = (orders) => {
+    const activityByHour = new Map();
+    orders.forEach((order) => {
+        const date = new Date(order.createdAt || "");
+        if (Number.isNaN(date.getTime())) return;
+        const hour = date.getHours();
+        const entry = activityByHour.get(hour) || { hour, orders: 0, total: 0 };
+        entry.orders += 1;
+        entry.total += Number(order.total || 0);
+        activityByHour.set(hour, entry);
+    });
+    return [...activityByHour.values()]
+        .sort((left, right) => right.orders - left.orders || left.hour - right.hour)
+        .slice(0, 6);
+};
+
+const formatHour = (hour) => new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: "numeric", hour12: true });
 
 const AdminSettings = () => {
     const [activeTab, setActiveTab] = useState("sales");
@@ -295,6 +325,31 @@ const AdminSettings = () => {
     const recentSales = useMemo(() => buildRecentSales(periodOrders), [periodOrders]);
     const categoryMix = useMemo(() => buildCategoryMix(periodOrders), [periodOrders]);
     const topItems = useMemo(() => buildTopItems(periodOrders), [periodOrders]);
+    const orderTypeBreakdown = useMemo(
+        () => buildOrderBreakdown(periodOrders, (order) => order.orderType || "Unassigned"),
+        [periodOrders],
+    );
+    const orderStatusBreakdown = useMemo(
+        () => buildOrderBreakdown(periodOrders, (order) => order.status || "Unknown"),
+        [periodOrders],
+    );
+    const hourlyActivity = useMemo(() => buildHourlyActivity(periodOrders), [periodOrders]);
+    const operationsSummary = useMemo(() => {
+        const completedOrders = periodOrders.filter((order) => order.status === "completed").length;
+        const openOrders = periodOrders.length - completedOrders;
+        const unitsSold = periodOrders.reduce((sum, order) => (
+            sum + (Array.isArray(order.cart) ? order.cart : []).reduce(
+                (itemSum, item) => itemSum + Math.max(0, Number(item.quantity) || 0),
+                0,
+            )
+        ), 0);
+        return {
+            completedOrders,
+            openOrders,
+            unitsSold,
+            completionRate: periodOrders.length ? (completedOrders / periodOrders.length) * 100 : 0,
+        };
+    }, [periodOrders]);
 
     const selectedReport = useMemo(() => {
         if (reportPeriod === "date") return buildDailyReport(orders, periodReferenceDate);
@@ -548,7 +603,7 @@ const AdminSettings = () => {
                                             <div key={`${sale.id}-${sale.time}`} className="flex items-center justify-between gap-3 rounded-[14px] bg-[#1f1f1f] p-3">
                                                 <div>
                                                     <p className="font-medium">{sale.id}</p>
-                                                    <p className="text-xs text-[#ababab]">{sale.cashier} · {sale.channel}</p>
+                                                    <p className="text-xs text-[#ababab]">{sale.detail} · {sale.channel}</p>
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="font-semibold text-[#d3d3d3]">₹{sale.total}</p>
@@ -560,7 +615,72 @@ const AdminSettings = () => {
                                 </section>
                             </div>
                         ) : (
-                            <div className="grid gap-6 xl:grid-cols-[1fr_1.4fr]">
+                            <div className="space-y-6">
+                                <section className="rounded-[24px] bg-[#2a2a2a] p-5 shadow-lg">
+                                    <div className="mb-5">
+                                        <h2 className="text-xl font-semibold">Operations at a glance</h2>
+                                        <p className="mt-1 text-sm text-[#ababab]">Order activity for {periodLabel}; open orders are included in totals.</p>
+                                    </div>
+                                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                        {[
+                                            { label: "Completed orders", value: operationsSummary.completedOrders },
+                                            { label: "Still open", value: operationsSummary.openOrders },
+                                            { label: "Items in orders", value: operationsSummary.unitsSold },
+                                            { label: "Completion rate", value: `${operationsSummary.completionRate.toFixed(1)}%` },
+                                        ].map((metric) => (
+                                            <div key={metric.label} className="rounded-[14px] bg-[#1f1f1f] p-4">
+                                                <p className="text-xs uppercase tracking-[0.12em] text-[#ababab]">{metric.label}</p>
+                                                <p className="mt-2 text-2xl font-semibold">{metric.value}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+
+                                <div className="grid gap-6 xl:grid-cols-3">
+                                    <section className="rounded-[24px] bg-[#2a2a2a] p-5 shadow-lg">
+                                        <h2 className="mb-4 text-xl font-semibold">Orders by type</h2>
+                                        <div className="space-y-3">
+                                            {orderTypeBreakdown.length ? orderTypeBreakdown.map((entry) => (
+                                                <div key={entry.label} className="flex items-center justify-between gap-3 rounded-[12px] bg-[#1f1f1f] p-3">
+                                                    <div>
+                                                        <p className="font-medium">{entry.label}</p>
+                                                        <p className="text-xs text-[#ababab]">{entry.orders} order{entry.orders === 1 ? "" : "s"}</p>
+                                                    </div>
+                                                    <p className="font-semibold text-[#a6f0c7]">₹{entry.total.toLocaleString()}</p>
+                                                </div>
+                                            )) : <p className="text-sm text-[#ababab]">No orders in this period.</p>}
+                                        </div>
+                                    </section>
+
+                                    <section className="rounded-[24px] bg-[#2a2a2a] p-5 shadow-lg">
+                                        <h2 className="mb-4 text-xl font-semibold">Order status</h2>
+                                        <div className="space-y-3">
+                                            {orderStatusBreakdown.length ? orderStatusBreakdown.map((entry) => (
+                                                <div key={entry.label} className="flex items-center justify-between gap-3 rounded-[12px] bg-[#1f1f1f] p-3">
+                                                    <span className="capitalize">{entry.label}</span>
+                                                    <span className="font-semibold">{entry.orders}</span>
+                                                </div>
+                                            )) : <p className="text-sm text-[#ababab]">No orders in this period.</p>}
+                                        </div>
+                                    </section>
+
+                                    <section className="rounded-[24px] bg-[#2a2a2a] p-5 shadow-lg">
+                                        <h2 className="mb-4 text-xl font-semibold">Busiest hours</h2>
+                                        <div className="space-y-3">
+                                            {hourlyActivity.length ? hourlyActivity.map((entry) => (
+                                                <div key={entry.hour} className="flex items-center justify-between gap-3 rounded-[12px] bg-[#1f1f1f] p-3">
+                                                    <div>
+                                                        <p className="font-medium">{formatHour(entry.hour)}</p>
+                                                        <p className="text-xs text-[#ababab]">{entry.orders} order{entry.orders === 1 ? "" : "s"}</p>
+                                                    </div>
+                                                    <p className="font-semibold text-[#a6f0c7]">₹{entry.total.toLocaleString()}</p>
+                                                </div>
+                                            )) : <p className="text-sm text-[#ababab]">No timestamped orders in this period.</p>}
+                                        </div>
+                                    </section>
+                                </div>
+
+                                <div className="grid gap-6 xl:grid-cols-[1fr_1.4fr]">
                                 <section className="rounded-[24px] bg-[#2a2a2a] p-5 shadow-lg">
                                     <h2 className="mb-5 text-xl font-semibold">Category Breakdown</h2>
                                     <div className="flex items-center justify-center">
@@ -607,6 +727,7 @@ const AdminSettings = () => {
                                         ))}
                                     </div>
                                 </section>
+                                </div>
                             </div>
                         )}
                     </>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FaPrint, FaPlus, FaUtensils, FaUsers, FaWifi } from "react-icons/fa6";
+import { FaBoxOpen, FaPrint, FaPlus, FaUtensils, FaUsers, FaWifi } from "react-icons/fa6";
 import { MdOutlineTableBar } from "react-icons/md";
 import { GoListOrdered } from "react-icons/go";
 import { Link } from "react-router-dom";
@@ -37,6 +37,7 @@ const Home = () => {
         { label: "New Order", icon: FaPlus, path: "/new-order" },
         { label: "Tables", icon: MdOutlineTableBar, path:"/Tables" },
         { label: "Orders", icon: GoListOrdered, path: "/Orders" },
+        { label: "Inventory", icon: FaBoxOpen, path: "/inventory" },
         { label: "Printer Settings", icon: FaPrint, path: "/settings" },
         ...(["Admin", "Manager", "Assistant Manager"].includes(currentUser?.role) ? [
             { label: "Customers", icon: FaUsers, path: "/customers" },
