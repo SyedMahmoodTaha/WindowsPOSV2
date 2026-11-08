@@ -1035,6 +1035,94 @@ const createWindow = () => {
     });
 
     posWindow = window;
+    let closePromptOpen = false;
+    let allowClose = false;
+    window.on("close", (event) => {
+        if (allowClose) return;
+        event.preventDefault();
+        if (closePromptOpen) return;
+        closePromptOpen = true;
+        void (async () => {
+            const incompleteOrderIds = new Set();
+            let heldOrderCount = 0;
+            const verificationErrors = [];
+            try {
+                for (const order of getOrdersFromDb(app)) {
+                    if (String(order.status || "").toLowerCase() !== "completed") {
+                        incompleteOrderIds.add(String(order.id));
+                    }
+                }
+            } catch (error) {
+                verificationErrors.push(error);
+            }
+
+            try {
+                const rendererState = await window.webContents.executeJavaScript(`(() => {
+                    try {
+                        const orders = JSON.parse(localStorage.getItem("pfl-orders-v2") || "[]");
+                        const heldOrders = JSON.parse(localStorage.getItem("pfl-held-orders") || "[]");
+                        if (!Array.isArray(orders) || !Array.isArray(heldOrders)) return { ok: false };
+                        return {
+                            ok: true,
+                            incompleteOrders: orders
+                                .filter((order) => String(order.status || "").toLowerCase() !== "completed")
+                                .map((order) => String(order.id)),
+                            heldOrderCount: heldOrders.length,
+                        };
+                    } catch {
+                        return { ok: false };
+                    }
+                })()`, true);
+                if (!rendererState?.ok) throw new Error("The renderer did not return valid order state.");
+                for (const orderId of rendererState.incompleteOrders) incompleteOrderIds.add(orderId);
+                heldOrderCount = rendererState.heldOrderCount;
+            } catch (error) {
+                verificationErrors.push(error);
+            }
+
+            if (incompleteOrderIds.size === 0 && heldOrderCount === 0 && verificationErrors.length === 0) {
+                allowClose = true;
+                window.close();
+                return;
+            }
+
+            for (const error of verificationErrors) {
+                console.error("Could not check for incomplete orders before closing:", error);
+            }
+            const incompleteOrderCount = incompleteOrderIds.size;
+            const hasUnfinishedWork = incompleteOrderCount > 0 || heldOrderCount > 0;
+            const details = [];
+            if (incompleteOrderCount > 0) {
+                details.push(`${incompleteOrderCount} saved order${incompleteOrderCount === 1 ? "" : "s"} remain open.`);
+            }
+            if (heldOrderCount > 0) {
+                details.push(`${heldOrderCount} order${heldOrderCount === 1 ? "" : "s"} ${heldOrderCount === 1 ? "is" : "are"} on hold.`);
+            }
+            if (verificationErrors.length > 0) details.push("Some order data could not be checked.");
+            details.push("Closing will not settle or complete orders; saved orders and held carts will remain unchanged.");
+
+            const { response } = await dialog.showMessageBox(window, {
+                type: "warning",
+                title: hasUnfinishedWork ? "Unsettled orders" : "Could not check orders",
+                message: hasUnfinishedWork
+                    ? "There is unfinished order work in the POS."
+                    : "The POS could not verify whether there are unsettled orders.",
+                detail: details.join("\n"),
+                buttons: ["Keep POS Open", "Close Anyway"],
+                defaultId: 0,
+                cancelId: 0,
+                noLink: true,
+            });
+            if (response === 1) {
+                allowClose = true;
+                window.close();
+            }
+        })().catch((error) => {
+            console.error("Could not complete the close check:", error);
+        }).finally(() => {
+            closePromptOpen = false;
+        });
+    });
     window.on("closed", () => {
         if (posWindow === window) posWindow = null;
     });

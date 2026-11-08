@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FaArrowLeft, FaChevronDown, FaChevronUp, FaClockRotateLeft, FaMinus, FaPlus, FaTrashCan } from "react-icons/fa6";
 import { FaRegStickyNote } from "react-icons/fa";
 import { MdOutlineTableBar } from "react-icons/md";
@@ -68,6 +68,7 @@ const NewOrder = () => {
     const navigate = useNavigate();
     const [cart, setCart] = useState([]);
     const [catalog, setCatalog] = useState(readCatalog);
+    const [orderHistory, setOrderHistory] = useState(readOrders);
     const [selectedCategory, setSelectedCategory] = useState("Favourites");
     const [orderType, setOrderType] = useState("");
     const [detailsOpen, setDetailsOpen] = useState(false);
@@ -98,11 +99,39 @@ const NewOrder = () => {
     const autoFilledCustomerRef = useRef(null);
     const orderListRef = useRef(null);
     const menuItems = catalog.menuItems;
-    const categories = catalog.categories;
+    const categories = [
+        "Favourites",
+        "Frequently Used",
+        ...catalog.categories.filter((category) => !["favourites", "favorites", "frequently used"].includes(String(category).toLowerCase())),
+    ];
+    const frequentlyUsedItems = useMemo(() => {
+        const usageByProductId = new Map();
+        for (const order of orderHistory) {
+            if (order.status !== "completed") continue;
+            for (const item of Array.isArray(order.cart) ? order.cart : []) {
+                const productId = item.productId ?? getCartProductValue(item);
+                if (productId === undefined || productId === null) continue;
+                const quantity = Math.max(0, Number(item.quantity) || 0);
+                const key = String(productId);
+                usageByProductId.set(key, (usageByProductId.get(key) || 0) + quantity);
+            }
+        }
+        return menuItems
+            .map((item, index) => ({ item, index, count: usageByProductId.get(String(item.id)) || 0 }))
+            .filter(({ count }) => count > 0)
+            .sort((left, right) => right.count - left.count || left.index - right.index)
+            .map(({ item }) => item);
+    }, [menuItems, orderHistory]);
     const itemByCode = new Map(menuItems.filter((item) => String(item.code || "").trim()).map((item) => [String(item.code).trim(), item]));
 
     useEffect(() => {
         readCatalogAsync().then(setCatalog);
+    }, []);
+
+    useEffect(() => {
+        const refreshOrderHistory = () => setOrderHistory(readOrders());
+        window.addEventListener("pfl-orders-updated", refreshOrderHistory);
+        return () => window.removeEventListener("pfl-orders-updated", refreshOrderHistory);
     }, []);
 
     useEffect(() => {
@@ -220,6 +249,7 @@ const NewOrder = () => {
             const existingItem = currentCart.find((item) => (
                 getCartProductId(item) === String(productId)
                 && getCartVariationName(item) === selectedVariationName
+                && Number(item.price) === Number(cartItem.price)
                 && !String(item.note || "").trim()
             ));
             if (existingItem) {
@@ -264,9 +294,11 @@ const NewOrder = () => {
     const total = subtotal + charge;
     const visibleItems = selectedCategory === "Favourites"
         ? menuItems.filter((item) => item.favorite)
-        : selectedCategory === "All"
-            ? menuItems
-            : menuItems.filter((item) => item.category === selectedCategory);
+        : selectedCategory === "Frequently Used"
+            ? frequentlyUsedItems
+            : selectedCategory === "All"
+                ? menuItems
+                : menuItems.filter((item) => item.category === selectedCategory);
     const currentOrderFields = orderType ? orderTypeFields[orderType] : [];
     const searchTerm = menuSearch.toLowerCase().trim();
     const filteredItems = (searchTerm ? menuItems : visibleItems).filter((item) => item.name.toLowerCase().includes(searchTerm));
@@ -506,6 +538,19 @@ const NewOrder = () => {
         if (activeHeldOrderId === heldOrderId) setActiveHeldOrderId(null);
     };
 
+    const renderCategoryButton = (category) => (
+        <button
+            key={category}
+            type="button"
+            onClick={() => setSelectedCategory(category)}
+            className={`rounded-[14px] px-4 py-3 text-left text-sm font-medium transition-colors ${selectedCategory === category
+                ? "bg-[#d3d3d3] text-[#1a1a1a]"
+                : "text-[#ababab] hover:bg-[#3a3a3a] hover:text-[#f5f5f5]"}`}
+        >
+            {category}
+        </button>
+    );
+
     return (
         <main className="h-screen overflow-hidden bg-[#1f1f1f] px-4 py-6 text-[#f5f5f5] sm:px-6">
             <div className="mx-auto flex h-full w-full flex-col">
@@ -538,21 +583,13 @@ const NewOrder = () => {
 
                 <div className="grid min-h-0 flex-1 gap-6 overflow-hidden lg:grid-cols-[6fr_4fr]">
                     <section className="grid min-h-0 overflow-hidden rounded-[24px] bg-[#2a2a2a] p-4 shadow-lg lg:grid-cols-[2fr_5fr]">
-                    <aside className="min-h-0 overflow-y-auto">
+                    <aside className="grid min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden">
                         <h2 className="mb-4 text-xl font-semibold">Categories</h2>
-                        <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
-                            {categories.map((category) => (
-                                <button
-                                    key={category}
-                                    type="button"
-                                    onClick={() => setSelectedCategory(category)}
-                                    className={`rounded-[14px] px-4 py-3 text-left text-sm font-medium transition-colors ${selectedCategory === category
-                                        ? "bg-[#d3d3d3] text-[#1a1a1a]"
-                                        : "text-[#ababab] hover:bg-[#3a3a3a] hover:text-[#f5f5f5]"}`}
-                                >
-                                    {category}
-                                </button>
-                            ))}
+                        <div className="grid grid-cols-2 gap-2 pb-2 lg:grid-cols-1">
+                            {categories.slice(0, 2).map(renderCategoryButton)}
+                        </div>
+                        <div className="grid min-h-0 grid-cols-2 content-start gap-2 overflow-y-auto lg:grid-cols-1">
+                            {categories.slice(2).map(renderCategoryButton)}
                         </div>
                     </aside>
 
@@ -569,6 +606,11 @@ const NewOrder = () => {
                             />
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                            {filteredItems.length === 0 && selectedCategory === "Frequently Used" && !searchTerm && (
+                                <p className="col-span-full rounded-[12px] bg-[#1f1f1f] p-4 text-sm text-[#ababab]">
+                                    Frequently used items will appear here after completed orders.
+                                </p>
+                            )}
                             {filteredItems.map((menuItem) => (
                                 <button
                                     key={menuItem.id}

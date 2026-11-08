@@ -6,6 +6,7 @@ export const ORDERS_STORAGE_KEY = "pfl-orders-v2";
 const LEGACY_ORDERS_STORAGE_KEY = "pfl-orders";
 const BILL_SEQUENCE_STORAGE_KEY = "pfl-bill-sequence-v2";
 const TOKEN_SEQUENCE_STORAGE_KEY = "pfl-token-sequence-v1";
+const BUSINESS_DAY_START_HOUR = 3;
 
 const WEB_PRINTER_SETTINGS_KEY = "pfl-printer-settings-v1";
 const WEB_SYNC_SETTINGS_KEY = "pfl-sync-settings-v1";
@@ -93,36 +94,32 @@ export const saveWebSyncSettings = (settings = {}) => {
 
 const getBusinessDate = (date = new Date()) => {
     const businessDate = new Date(date);
-    if (businessDate.getHours() < 3) businessDate.setDate(businessDate.getDate() - 1);
+    if (businessDate.getHours() < BUSINESS_DAY_START_HOUR) businessDate.setDate(businessDate.getDate() - 1);
     return [businessDate.getFullYear(), businessDate.getMonth() + 1, businessDate.getDate()]
         .map((part) => String(part).padStart(2, "0"))
         .join("-");
 };
 
-export const getNextBillNumber = () => {
+const getNextDailySequenceNumber = (storageKey, sequenceName) => {
     const businessDate = getBusinessDate();
-    let sequence = { date: businessDate, number: 0 };
+    let previousNumber = 0;
     try {
-        sequence = JSON.parse(localStorage.getItem(BILL_SEQUENCE_STORAGE_KEY)) || sequence;
-    } catch {
+        const sequence = JSON.parse(localStorage.getItem(storageKey));
+        if (sequence?.date === businessDate) {
+            const storedNumber = Number(sequence.number);
+            if (Number.isSafeInteger(storedNumber) && storedNumber >= 0) previousNumber = storedNumber;
+        }
+    } catch (error) {
+        console.error(`Could not read ${sequenceName} sequence:`, error);
     }
-    const nextNumber = sequence.date === businessDate ? sequence.number + 1 : 1;
-    localStorage.setItem(BILL_SEQUENCE_STORAGE_KEY, JSON.stringify({ date: businessDate, number: nextNumber }));
-    return String(nextNumber).padStart(3, "0");
+    const nextNumber = previousNumber + 1;
+    localStorage.setItem(storageKey, JSON.stringify({ date: businessDate, number: nextNumber }));
+    return nextNumber;
 };
 
-export const getNextTokenNumber = () => {
-    const businessDate = getBusinessDate();
-    let sequence = { date: businessDate, number: 0 };
-    try {
-        sequence = JSON.parse(localStorage.getItem(TOKEN_SEQUENCE_STORAGE_KEY)) || sequence;
-    } catch (error) {
-        console.error("Could not read token number sequence:", error);
-    }
-    const nextNumber = sequence.date === businessDate ? sequence.number + 1 : 1;
-    localStorage.setItem(TOKEN_SEQUENCE_STORAGE_KEY, JSON.stringify({ date: businessDate, number: nextNumber }));
-    return String(nextNumber);
-};
+export const getNextBillNumber = () => String(getNextDailySequenceNumber(BILL_SEQUENCE_STORAGE_KEY, "bill number")).padStart(3, "0");
+
+export const getNextTokenNumber = () => String(getNextDailySequenceNumber(TOKEN_SEQUENCE_STORAGE_KEY, "token number"));
 
 export const readOrders = () => {
     localStorage.removeItem(LEGACY_ORDERS_STORAGE_KEY);

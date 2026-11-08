@@ -46,6 +46,8 @@ Pushing the repository only creates new artifacts; it does not remotely install 
 
 The current POS source stores its database and account/settings files under `%APPDATA%\Lassi Shop POS`. The previous WindowsPOSV2 database directory, `%APPDATA%\Lassi Shop POS Windows`, is not automatically migrated; back it up and explicitly plan any data migration before replacing an existing installation.
 
+In New Order, Favourites and Frequently Used stay pinned above other categories. Frequently Used ranks products by quantity in completed orders. Bill and token numbers roll over at 03:00 local time. If saved orders remain open or carts are held, closing the POS prompts before it exits; Close Anyway does not settle or complete them.
+
 ## Local development
 
 Use Node.js 20 on Windows. Copy `.env.example` to `.env` in the POS root and set local account credentials, then run:
