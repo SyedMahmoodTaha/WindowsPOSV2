@@ -31,7 +31,7 @@ Push to `main` or `master`, or start **Windows Build** manually from the Actions
 
 Extract each ZIP to a folder and launch the app's `.exe` inside its folder. These are unpacked portable app folders, not installers or standalone single-file executables; keep the accompanying resources and files together.
 
-To download the DB Viewer, open the completed **Windows Build** run in [GitHub Actions](https://github.com/SyedMahmoodTaha/WindowsPOSV2/actions/workflows/windows-build.yml), open that run's **Summary**, and select `lassi-shop-db-viewer-windows` under **Artifacts**. These are run artifacts, not files under the repository's **Releases** page; GitHub expires run artifacts after its retention period.
+To download the DB Viewer, open the completed **Windows Build** run in [GitHub Actions](https://github.com/SyedMahmoodTaha/WindowsPOSV2/actions/workflows/windows-build.yml), open that run's **Summary**, and select `lassi-shop-db-viewer-windows-portable` under **Artifacts**. These are run artifacts, not files under the repository's **Releases** page; GitHub expires run artifacts after its retention period.
 
 The DB Viewer accepts only the POS Admin account. Its Electron process enforces Admin sign-in for reports, exports, order edits, and deletes. The workflow packages its account settings from the same secrets as the POS build.
 

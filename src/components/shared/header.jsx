@@ -125,8 +125,7 @@ const Header = () => {
        <header ref={containerRef} className="relative flex flex-col gap-3 bg-[#1a1a1a] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-3 sm:justify-start">
             <div className="flex items-center gap-2">
-                <img src={logo} className="h-8 w-8" alt="Logo" />
-                <h1 className="text-base font-semibold text-[#f5f5f5] sm:text-lg">Tyep</h1>
+                <img src={logo} className="h-auto w-14" alt="Tyep logo" />
             </div>
         </div>
 
