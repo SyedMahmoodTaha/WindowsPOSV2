@@ -24,10 +24,12 @@ Add these six repository secrets under **Settings > Secrets and variables > Acti
 | `VITE_CASHIER_USERNAME` | Cashier login |
 | `VITE_CASHIER_PASSWORD` | Cashier password |
 
-Push to `main` or `master`, or start **Windows Build** manually from the Actions tab. The workflow creates temporary `.env` files from those secrets, verifies the packaged POS account configuration, and uploads two artifacts:
+Push to `main` or `master`, or start **Windows Build** manually from the Actions tab. The workflow creates temporary `.env` files from those secrets, verifies the packaged POS account configuration, and uploads two ZIP artifacts:
 
-- `lassi-shop-pos-windows-installer` — branded Windows x64 NSIS installer for the POS.
-- `lassi-shop-db-viewer-windows` — standalone DB Viewer installer (`.exe` only).
+- `lassi-shop-pos-windows-portable` — ZIP containing the `Tyep/` portable Windows x64 app folder.
+- `lassi-shop-db-viewer-windows-portable` — ZIP containing the `PFL DB Viewer/` portable Windows x64 app folder.
+
+Extract each ZIP to a folder and launch the app's `.exe` inside its folder. These are unpacked portable app folders, not installers or standalone single-file executables; keep the accompanying resources and files together.
 
 To download the DB Viewer, open the completed **Windows Build** run in [GitHub Actions](https://github.com/SyedMahmoodTaha/WindowsPOSV2/actions/workflows/windows-build.yml), open that run's **Summary**, and select `lassi-shop-db-viewer-windows` under **Artifacts**. These are run artifacts, not files under the repository's **Releases** page; GitHub expires run artifacts after its retention period.
 
@@ -38,17 +40,17 @@ The DB Viewer accepts only the POS Admin account. Its Electron process enforces 
 Pushing the repository only creates new artifacts; it does not remotely install them on an existing POS.
 
 1. Close the POS and DB Viewer.
-2. Back up `%APPDATA%\Lassi Shop POS\pfl.sqlite` before installing.
-3. Download and run the POS installer from the successful Actions run.
-4. Install the DB Viewer artifact separately if needed.
+2. Back up `%APPDATA%\Lassi Shop POS\pfl.sqlite` before updating.
+3. Download and extract the POS portable ZIP from the successful Actions run. Run `Tyep.exe` from its extracted `Tyep/` folder.
+4. Extract the DB Viewer portable ZIP separately if needed. Run `PFL DB Viewer.exe` from its extracted `PFL DB Viewer/` folder.
 5. Launch the POS and verify the menu, orders, and settings. Then open the DB Viewer and sign in with the POS Admin account.
-6. Keep your database backup and previous installer until you confirm the update is working.
+6. Keep your database backup and previous app folder until you confirm the update is working.
 
-The current POS source stores its database and account/settings files under `%APPDATA%\Lassi Shop POS`. The previous WindowsPOSV2 database directory, `%APPDATA%\Lassi Shop POS Windows`, is not automatically migrated; back it up and explicitly plan any data migration before replacing an existing installation.
+The current POS source stores its database and account/settings files under `%APPDATA%\Lassi Shop POS`. The previous WindowsPOSV2 database directory, `%APPDATA%\Lassi Shop POS Windows`, is not automatically migrated; back it up and explicitly plan any data migration before replacing an existing app folder.
 
 In New Order, Favourites and Frequently Used stay pinned above other categories. Frequently Used ranks products by quantity in completed orders. Bill and token numbers roll over at 03:00 local time. If saved orders remain open or carts are held, closing the POS prompts before it exits; Close Anyway does not settle or complete them.
 
-Developer Mode now supports removing menu categories while moving their products to a remaining category. Global search can find any account from a cashier or manager session; selecting one signs out and still requires that account's password. New orders require an order type before Save or KOT, and the Inventory page currently displays a Coming soon placeholder. Admin reports include order status/type, item quantity, and busiest-hour breakdowns.
+Developer Mode now supports removing menu categories while moving their products to a remaining category. Global search can find any account from a cashier or manager session; selecting one signs out and still requires that account's password. New orders require an order type before Save or KOT. Inventory tracks shared ingredients and per-menu-item recipe usage; stock is received by package with a base-unit conversion and expiry date, then deducted from unexpired batches when an order is marked completed. This lets one ingredient, such as a cheese slice, be shared across multiple menu items. Inventory can be searched and filtered; archive discontinued ingredients to hide them while retaining stock and recipe history. The Inventory page's global switch can disable inventory checks and deductions for POS orders.
 
 The Home Quick Actions area is limited to New Order, Tables, Orders, and Printer Settings. Use More Settings for other options available to the signed-in role.
 
@@ -75,5 +77,5 @@ npm run desktop
 
 Build the POS with `npm run dist` from the repository root. Build the viewer with `npm run dist` from `DB-Viewer/`. Outputs are written to each app's `release/` folder.
 
-Never commit `.env` files, account passwords, generated installers, or POS SQLite database files.
+Never commit `.env` files, account passwords, generated installers or portable app archives, or POS SQLite database files.
 # WindowsPOSV2

@@ -8,3 +8,4 @@ dist/
 .env
 *.sqlite
 *.db
+PFLTB

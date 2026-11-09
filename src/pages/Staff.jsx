@@ -237,7 +237,7 @@ const Staff = () => {
     const memberTypeLabel = (member) => member.memberType === "pos-user" ? member.role : member.jobTitle;
 
     return (
-        <main className="min-h-screen bg-[#1f1f1f] px-4 py-6 text-[#f5f5f5] sm:px-6">
+        <main className="staff-users-page min-h-screen bg-[#1f1f1f] px-4 py-6 text-[#f5f5f5] sm:px-6">
             <div className="mx-auto max-w-6xl">
                 <header className="mb-8 flex items-center gap-4">
                     <Link to={backPath} aria-label={backPath === "/more-settings" ? "Back to More Settings" : "Back to home"} className="rounded-full p-3 text-[#d3d3d3] hover:bg-[#d3d3d3] hover:text-[#1a1a1a]">
@@ -265,7 +265,7 @@ const Staff = () => {
                                     setFilter(value);
                                     const nextMember = members.find((member) => value === "all" || member.memberType === value);
                                     setSelectedId(nextMember ? identity(nextMember) : "");
-                                }} className={`rounded-[7px] px-1 py-2 ${filter === value ? "bg-[#d3d3d3] font-semibold text-[#1a1a1a]" : "text-[#ababab]"}`}>{label}</button>
+                                }} className={`rounded-[7px] px-1 py-2 ${filter === value ? "staff-filter-active bg-[#d3d3d3] font-semibold text-[#1a1a1a]" : "text-[#ababab]"}`}>{label}</button>
                             ))}
                         </div>
                         <div className="space-y-2">

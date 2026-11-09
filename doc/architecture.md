@@ -41,6 +41,7 @@ The bridge covers authentication and users, printer settings and printing, repor
 | --- | --- | --- |
 | Orders | SQLite `orders.payload` JSON | `localStorage` key `pfl-orders-v2` |
 | Catalog/categories | SQLite `items` and `categories` | Catalog utility localStorage keys |
+| Inventory ingredients, stock batches, and recipes | SQLite `settings` key `inventory-ingredients` | Catalog utility localStorage key |
 | Dining tables | SQLite `tables` | Catalog utility localStorage keys |
 | POS login accounts | `users.json` in Electron userData, combined with configured accounts | Auth utility localStorage |
 | Shop-staff profiles | `shop-staff.json` in Electron userData | `pfl-shop-staff-v1` |
@@ -56,7 +57,11 @@ Electron data is stored below `<appData>/Lassi Shop POS`. This existing data dir
 
 ### Orders
 
-Order utilities update the renderer's localStorage snapshot, emit `pfl-orders-updated`, and persist the full order list to SQLite when the desktop bridge is available. At startup, `App.jsx` loads SQLite orders back into localStorage. Order screens listen for the custom update event and, where relevant, the browser `storage` event. Marking an order completed changes its status without deleting it; the active Orders screen hides it and the All Orders page linked from Admin Settings lists completed records for viewing and cashier receipt reprints.
+Order utilities update the renderer's localStorage snapshot, emit `pfl-orders-updated`, and persist the full order list to SQLite when the desktop bridge is available. At startup, `App.jsx` loads SQLite orders back into localStorage. Order screens listen for the custom update event and, where relevant, the browser `storage` event. Marking an order completed consumes its configured recipe quantities from shared ingredient batches, using earliest-expiring unexpired stock first; a shortage prevents completion, and an order's inventory deduction is recorded to prevent duplicate consumption. Saving an order or sending KOT does not deduct stock. Completed orders remain available from All Orders for viewing and cashier receipt reprints.
+
+### Inventory
+
+Inventory records ingredients separately from menu items. Each ingredient has a base unit, stock-in batches, package-to-base-unit conversion, stock-in and expiry dates, supplier and notes, an enable/disable control, and recipe mappings to any number of menu items. Multiple recipes consume the same ingredient balance. A global inventory-enabled setting controls whether POS completion validates or deducts any inventory; it defaults to enabled and is persisted and synchronized with the catalog. Discontinued ingredients can be archived to remove them from the active list without losing stock, recipe, or deduction history; permanent deletion is limited to ingredients with no history or recipe links. Inventory search and active/archived filters keep large catalogs manageable. Ingredient data is included in catalog sync and persisted in SQLite on desktop; browser development stores it with the local catalog.
 
 ### Printing
 

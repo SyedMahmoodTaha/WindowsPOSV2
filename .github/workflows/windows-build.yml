@@ -58,7 +58,7 @@ jobs:
       - name: Build Vite app
         run: npm run build
 
-      - name: Package unpacked Windows app for account verification
+      - name: Package portable Windows app
         run: npx electron-builder --win dir --x64
 
       - name: Verify packaged account configuration
@@ -86,14 +86,19 @@ jobs:
             }
           }
 
-      - name: Package Windows installer
-        run: npm run dist
+      - name: Create portable app ZIP
+        shell: pwsh
+        run: |
+          $appDirectory = "release/Tyep"
+          New-Item -ItemType Directory -Force -Path $appDirectory | Out-Null
+          Copy-Item -Path "release/win-unpacked/*" -Destination $appDirectory -Recurse -Force
+          Compress-Archive -Path $appDirectory -DestinationPath "release/Tyep-windows-x64.zip" -Force
 
-      - name: Upload build artifact
+      - name: Upload portable POS app
         uses: actions/upload-artifact@v4
         with:
-          name: lassi-shop-pos-windows-installer
-          path: release/Tyep Setup *.exe
+          name: lassi-shop-pos-windows-portable
+          path: release/Tyep-windows-x64.zip
           if-no-files-found: error
 
   build-db-viewer-windows:
@@ -142,12 +147,22 @@ jobs:
           )
           [System.IO.File]::WriteAllLines(".env", $lines, [System.Text.UTF8Encoding]::new($false))
 
-      - name: Build and package DB Viewer
-        run: npm run dist
+      - name: Build and package portable DB Viewer
+        run: |
+          npm run build
+          npx electron-builder --win dir --x64
 
-      - name: Upload DB Viewer installer
+      - name: Create portable DB Viewer ZIP
+        shell: pwsh
+        run: |
+          $appDirectory = "release/PFL DB Viewer"
+          New-Item -ItemType Directory -Force -Path $appDirectory | Out-Null
+          Copy-Item -Path "release/win-unpacked/*" -Destination $appDirectory -Recurse -Force
+          Compress-Archive -Path $appDirectory -DestinationPath "release/PFL-DB-Viewer-windows-x64.zip" -Force
+
+      - name: Upload portable DB Viewer app
         uses: actions/upload-artifact@v4
         with:
-          name: lassi-shop-db-viewer-windows
-          path: DB-Viewer/release/*.exe
+          name: lassi-shop-db-viewer-windows-portable
+          path: DB-Viewer/release/PFL-DB-Viewer-windows-x64.zip
           if-no-files-found: error

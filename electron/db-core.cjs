@@ -7,6 +7,8 @@ const { categories: seededCategories, menuItems: seededMenuItems } = require("./
 const defaultCatalog = {
     categories: seededCategories,
     menuItems: seededMenuItems,
+    ingredients: [],
+    inventoryEnabled: false,
 };
 
 const getDataDirectory = (app) => {
@@ -198,37 +200,64 @@ const getCatalogFromDb = (app) => {
             }
         })(),
     }));
+    const inventorySetting = db.prepare("SELECT value FROM settings WHERE key = ?").get("inventory-ingredients");
+    const ingredients = inventorySetting ? JSON.parse(inventorySetting.value) : [];
+    if (!Array.isArray(ingredients)) throw new Error("Saved inventory ingredients must be a list.");
+    const inventoryEnabledSetting = db.prepare("SELECT value FROM settings WHERE key = ?").get("inventory-enabled");
+    const inventoryEnabled = inventoryEnabledSetting ? inventoryEnabledSetting.value === "true" : false;
 
-    return { categories, menuItems };
+    return { categories, menuItems, ingredients, inventoryEnabled };
 };
 
 const saveCatalogToDb = (app, catalog) => {
     const db = initializeDatabase(app);
     const safeCategories = Array.isArray(catalog?.categories) ? catalog.categories : [];
     const safeMenuItems = Array.isArray(catalog?.menuItems) ? catalog.menuItems : [];
+    const savedIngredients = db.prepare("SELECT value FROM settings WHERE key = ?").get("inventory-ingredients");
+    const safeIngredients = Array.isArray(catalog?.ingredients)
+        ? catalog.ingredients
+        : savedIngredients ? JSON.parse(savedIngredients.value) : [];
+    const savedInventoryEnabled = db.prepare("SELECT value FROM settings WHERE key = ?").get("inventory-enabled");
+    const inventoryEnabled = typeof catalog?.inventoryEnabled === "boolean"
+        ? catalog.inventoryEnabled
+        : savedInventoryEnabled ? savedInventoryEnabled.value === "true" : false;
 
-    db.prepare("DELETE FROM categories").run();
-    if (safeCategories.length) {
-        const insertCategory = db.prepare("INSERT INTO categories (name) VALUES (?)");
-        const insertMany = db.transaction((rows) => rows.forEach((row) => insertCategory.run(row)));
-        insertMany(safeCategories);
-    }
+    db.transaction(() => {
+        db.prepare("DELETE FROM categories").run();
+        if (safeCategories.length) {
+            const insertCategory = db.prepare("INSERT INTO categories (name) VALUES (?)");
+            for (const row of safeCategories) insertCategory.run(row);
+        }
 
-    db.prepare("DELETE FROM items").run();
-    if (safeMenuItems.length) {
-        const insertItem = db.prepare("INSERT INTO items (code, name, category, price, diet, favorite, variations) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        const insertMany = db.transaction((rows) => rows.forEach((row) => insertItem.run(
-            row.code ?? "",
-            row.name ?? "",
-            row.category ?? "",
-            Number(row.price || 0),
-            row.diet ?? "veg",
-            row.favorite ? 1 : 0,
-            JSON.stringify(row.variations || [])
-        )));
-        insertMany(safeMenuItems);
-    }
-
+        db.prepare("DELETE FROM items").run();
+        if (safeMenuItems.length) {
+            const insertItem = db.prepare("INSERT INTO items (id, code, name, category, price, diet, favorite, variations) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            for (const row of safeMenuItems) {
+                const itemId = Number(row.id);
+                if (!Number.isSafeInteger(itemId) || itemId <= 0) {
+                    throw new Error("Every menu item must have a valid ID.");
+                }
+                insertItem.run(
+                    itemId,
+                    row.code ?? "",
+                    row.name ?? "",
+                    row.category ?? "",
+                    Number(row.price || 0),
+                    row.diet ?? "veg",
+                    row.favorite ? 1 : 0,
+                    JSON.stringify(row.variations || []),
+                );
+            }
+        }
+        db.prepare(`
+            INSERT INTO settings (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        `).run("inventory-ingredients", JSON.stringify(safeIngredients));
+        db.prepare(`
+            INSERT INTO settings (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        `).run("inventory-enabled", String(inventoryEnabled));
+    })();
     return getCatalogFromDb(app);
 };
 

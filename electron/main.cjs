@@ -278,7 +278,7 @@ const setManagedUsers = (event, users) => {
     });
 };
 const saveCatalogWithRole = (event, catalog) => {
-    const user = requireAuthenticatedUser(event, ["Admin", "Manager"]);
+    const user = requireAuthenticatedUser(event, ["Admin", "Manager", "Assistant Manager", "Cashier"]);
     if (user.role === "Manager") {
         const currentCatalog = getCatalogFromDb(app);
         const categories = Array.isArray(catalog?.categories) ? catalog.categories : [];
@@ -288,6 +288,12 @@ const saveCatalogWithRole = (event, catalog) => {
         }
         if (currentCatalog.categories.some((category) => !categories.includes(category))) {
             throw new Error("Managers can add categories but cannot remove existing categories.");
+        }
+    } else if (user.role !== "Admin") {
+        const currentCatalog = getCatalogFromDb(app);
+        if (JSON.stringify(catalog?.categories) !== JSON.stringify(currentCatalog.categories)
+            || JSON.stringify(catalog?.menuItems) !== JSON.stringify(currentCatalog.menuItems)) {
+            throw new Error("Your account can update inventory only; menu changes require an Admin or Manager.");
         }
     }
     return saveCatalogToDb(app, catalog);

@@ -30,19 +30,34 @@ const readJson = (key, fallback) => {
 };
 
 export const readCatalog = () => {
-    return { menuItems: defaultMenuItems, categories: defaultCategories };
+    return { menuItems: defaultMenuItems, categories: defaultCategories, ingredients: [], inventoryEnabled: false };
 };
 
 export const readCatalogAsync = async () => {
     if (window.pflDesktop && window.pflDesktop.getCatalog) {
         try {
-            return await window.pflDesktop.getCatalog();
+            const catalog = await window.pflDesktop.getCatalog();
+            return {
+                ...catalog,
+                ingredients: Array.isArray(catalog?.ingredients) ? catalog.ingredients : [],
+                inventoryEnabled: Boolean(catalog?.inventoryEnabled),
+            };
         } catch (error) {
             console.error("Error reading catalog from DB:", error);
-            return readJson(CATALOG_STORAGE_KEY, { menuItems: defaultMenuItems, categories: defaultCategories });
+            const catalog = readJson(CATALOG_STORAGE_KEY, readCatalog());
+            return {
+                ...catalog,
+                ingredients: Array.isArray(catalog?.ingredients) ? catalog.ingredients : [],
+                inventoryEnabled: Boolean(catalog?.inventoryEnabled),
+            };
         }
     }
-    return readJson(CATALOG_STORAGE_KEY, { menuItems: defaultMenuItems, categories: defaultCategories });
+    const catalog = readJson(CATALOG_STORAGE_KEY, readCatalog());
+    return {
+        ...catalog,
+        ingredients: Array.isArray(catalog?.ingredients) ? catalog.ingredients : [],
+        inventoryEnabled: Boolean(catalog?.inventoryEnabled),
+    };
 };
 
 export const saveCatalog = async (catalog) => {
