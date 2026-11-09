@@ -12,6 +12,17 @@
   .field {
     @apply rounded-[10px] border border-[#444] bg-[#1f1f1f] px-3 py-2 text-sm text-[#f5f5f5] outline-none placeholder:text-[#777] focus:border-[#d3d3d3];
   }
+
+}
+
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='m3 6 5 5 5-5' stroke='%23ababab' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 0.75rem;
+  padding-right: 2.25rem;
 }
 
 html, body, #root {
@@ -155,3 +166,66 @@ body.theme-light .hold-panel .text-\[#f5f5f5\],
 body.theme-light .hold-modal .text-\[#f5f5f5\],
 body.theme-light .note-modal .text-\[#f5f5f5\],
 body.theme-light .variation-modal .text-\[#f5f5f5\] { color: #242321 !important; }
+
+body.theme-light .staff-users-page {
+  background: #f3f1eb !important;
+  color: #292722 !important;
+}
+
+body.theme-light .staff-users-page [class~="bg-[#2a2a2a]"] {
+  background-color: #fffdfa !important;
+  color: #292722;
+}
+
+body.theme-light .staff-users-page [class~="bg-[#1f1f1f]"] {
+  background-color: #f3f0e9 !important;
+  color: #292722;
+}
+
+body.theme-light .staff-users-page [class~="bg-[#444]"] {
+  background-color: #d6d6d6 !important;
+  color: #292722;
+}
+
+body.theme-light .staff-users-page [class~="bg-[#3a3a3a]"] {
+  background-color: #e8e4dc !important;
+  color: #5f5b54;
+}
+
+body.theme-light .staff-users-page [class~="text-[#f5f5f5]"],
+body.theme-light .staff-users-page [class~="text-[#1a1a1a]"] {
+  color: #292722 !important;
+}
+
+body.theme-light .staff-users-page [class~="text-[#ababab]"] {
+  color: #8b857c !important;
+}
+
+body.theme-light .staff-users-page [class~="text-[#d3d3d3]"] {
+  color: #625e57 !important;
+}
+
+body.theme-light .staff-users-page [class~="border-[#555]"] {
+  border-color: #d5cabb !important;
+}
+
+body.theme-light .staff-users-page .field {
+  border-color: #d5cabb;
+  background-color: #fffdfa;
+  color: #292722;
+}
+
+body.theme-light .staff-users-page .field::placeholder {
+  color: #9a9287;
+}
+
+body.theme-light .staff-users-page .staff-filter-active {
+  border: 1px solid #1976f3;
+  box-shadow: 0 0 0 1px #1976f3;
+}
+
+body.theme-light .staff-users-page button[class~="hover:bg-[#3a3a3a]"]:hover,
+body.theme-light .staff-users-page a[class~="hover:bg-[#d3d3d3]"]:hover {
+  background-color: #e5dfd4 !important;
+  color: #292722 !important;
+}

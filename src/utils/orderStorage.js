@@ -1,5 +1,7 @@
 import { getCurrentUser } from "./auth";
 import { DEFAULT_FIELD_LABELS, defaultBillTemplates, readLocalBillTemplates } from "./billTemplates";
+import { readCatalogAsync, saveCatalog } from "./catalog";
+import { consumeIngredientsForOrder } from "./inventory";
 import { pushOrdersToHost } from "./networkSync";
 
 export const ORDERS_STORAGE_KEY = "pfl-orders-v2";
@@ -177,6 +179,30 @@ export const updateOrder = (orderId, changes) => {
     void pushOrdersToHost(orders);
     window.dispatchEvent(new Event("pfl-orders-updated"));
     return orders.find((order) => order.id === orderId);
+};
+
+export const completeOrderWithInventory = async (orderId) => {
+    const order = readOrders().find((candidate) => String(candidate.id) === String(orderId));
+    if (!order) return { ok: false, reason: "This order could not be found. Refresh and try again." };
+    if (order.status === "completed") return { ok: true, alreadyCompleted: true, order };
+
+    const catalog = await readCatalogAsync();
+    if (catalog.inventoryEnabled === false) {
+        return { ok: true, order: updateOrder(order.id, { status: "completed" }), inventoryDisabled: true };
+    }
+
+    const consumption = consumeIngredientsForOrder(catalog.ingredients || [], order);
+    if (!consumption.ok) return consumption;
+
+    if (JSON.stringify(consumption.ingredients) !== JSON.stringify(catalog.ingredients || [])) {
+        await saveCatalog({ ...catalog, ingredients: consumption.ingredients });
+    }
+
+    const updatedOrder = updateOrder(order.id, {
+        status: "completed",
+        inventoryDeductedAt: new Date().toISOString(),
+    });
+    return { ok: true, order: updatedOrder };
 };
 
 export const removeOrder = (orderId) => {

@@ -26,7 +26,7 @@ const Auth = () => {
             <section className="w-full max-w-md rounded-[24px] bg-[#2a2a2a] p-6 shadow-2xl sm:p-8">
                 <div className="mb-8 text-center">
                     <img src={logo} alt="Lassi Shop logo" className="mx-auto mb-4 size-16 rounded-[16px]" />
-                    <p className="text-sm uppercase tracking-[0.2em] text-[#ababab]">Lassi Shop POS</p>
+                    <p className="text-sm uppercase tracking-[0.2em] text-[#ababab]">Tyep</p>
                     <h1 className="mt-2 text-3xl font-semibold">Sign in</h1>
                 </div>
                 <form onSubmit={handleSubmit} className="grid gap-4">

@@ -5,14 +5,14 @@ This file records verified implementation facts and constraints for future work.
 ## Repository and Tooling
 
 - The application lives in `PFL/` and is a Vite + React 19 + Electron project using JavaScript/JSX and CommonJS Electron entry files.
-- React Router uses `HashRouter`; keep that behavior for packaged `file://` rendering and the auxiliary database-viewer window.
+- React Router uses `HashRouter` to support the packaged `file://` app.
 - Styling uses Tailwind CSS and custom global CSS. Icons come from `react-icons`.
 - `npm run lint` runs Oxlint. `npm run build` validates and produces the renderer build. There is no test script in the current `package.json`.
 
 ## Ownership Map
 
 - `src/App.jsx`: app initialization, route table, authentication redirects, and Admin route checks.
-- `src/pages/`: user-facing POS, order, settings, reporting, and database-viewer pages.
+- `src/pages/`: user-facing POS, order, settings, and reporting pages.
 - `src/utils/orderStorage.js`: order snapshot storage, receipt rendering, print routing, and local order events.
 - `src/utils/catalog.js`: catalog and table storage adapters.
 - `src/utils/networkSync.js`: host/client order sync behavior in the renderer.
@@ -23,8 +23,8 @@ This file records verified implementation facts and constraints for future work.
 
 ## Persistence Facts
 
-- WindowsPOSV1 data directory is `<Electron appData>/Lassi Shop POS Windows`; the database filename is `pfl.sqlite`.
-- WindowsPOSV1 intentionally does not migrate the previous `Lassi Shop POS` database, so old sales data remains untouched and the new build starts with an empty order history.
+- Desktop data directory is `<Electron appData>/Lassi Shop POS`; the database filename is `pfl.sqlite`.
+- The app migrates an existing database from Electron's previous `userData` location only when the shared destination file does not exist.
 - Orders have a JSON payload in SQLite and a renderer-side `pfl-orders-v2` localStorage snapshot. The desktop startup hydrates the snapshot from SQLite.
 - Browser development uses localStorage adapters for data that is otherwise backed by Electron/SQLite. Do not assume browser storage is shared with the desktop database.
 - Printer, sync, and user settings are separate JSON files under desktop `userData`. Theme preference is localStorage-backed.

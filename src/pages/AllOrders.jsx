@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { FaArrowLeft, FaEye, FaPrint, FaXmark } from "react-icons/fa6";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { printOrder, readOrders } from "../utils/orderStorage";
 import { getCurrentUser } from "../utils/auth";
 
@@ -20,8 +20,12 @@ const getOrderLocation = (order) => order.orderType === "Table"
     : order.orderType || "Walk-in";
 
 const AllOrders = () => {
+    const location = useLocation();
     const user = getCurrentUser();
     const canViewFinancialDetails = user?.role === "Admin";
+    const backPath = location.state?.from === "/more-settings"
+        ? "/more-settings"
+        : canViewFinancialDetails ? "/admin-settings" : "/";
     const [orders, setOrders] = useState(readOrders);
     const [search, setSearch] = useState("");
     const [viewOrder, setViewOrder] = useState(null);
@@ -49,7 +53,7 @@ const AllOrders = () => {
         <main className="min-h-screen bg-[#1f1f1f] px-4 py-6 text-[#f5f5f5] sm:px-6">
             <div className="mx-auto max-w-5xl">
                 <div className="mb-6 flex items-center gap-4 sm:mb-8">
-                    <Link to={canViewFinancialDetails ? "/admin-settings" : "/"} className="rounded-full p-3 text-[#d3d3d3] transition-colors hover:bg-[#d3d3d3] hover:text-[#1a1a1a]" aria-label={canViewFinancialDetails ? "Back to settings" : "Back to home"}>
+                    <Link to={backPath} className="rounded-full p-3 text-[#d3d3d3] transition-colors hover:bg-[#d3d3d3] hover:text-[#1a1a1a]" aria-label={backPath === "/more-settings" ? "Back to More Settings" : canViewFinancialDetails ? "Back to settings" : "Back to home"}>
                         <FaArrowLeft />
                     </Link>
                     <div>

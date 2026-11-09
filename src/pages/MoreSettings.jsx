@@ -7,22 +7,22 @@ const MoreSettings = () => {
     const role = getCurrentUser()?.role;
     const options = [
         { label: "Inventory", description: "Stock management", icon: FaBoxOpen, path: "/inventory" },
+        { label: "My Account", description: "Update your profile and contact details", icon: FaGear, path: "/my-account" },
         { label: "Bill Printing Preferences", description: "Configure cashier and kitchen print layouts", icon: FaGear, path: "/bill-printing-preferences" },
         ...(["Admin", "Manager", "Assistant Manager"].includes(role) ? [
             { label: "Customers", description: "Customer profiles and service history", icon: FaUsers, path: "/customers" },
             { label: "All Orders", description: "Review completed orders", icon: GoListOrdered, path: "/all-orders" },
         ] : []),
+        ...(["Admin", "Manager"].includes(role) ? [
+            { label: "Staff & Users", description: "View staff profiles and manage login accounts", icon: FaUsers, path: "/staff-users" },
+        ] : []),
         ...(role === "Admin" ? [
             { label: "Admin Settings", description: "Sales and operations reports", icon: FaChartLine, path: "/admin-settings" },
             { label: "Network Sync", description: "Connect approved devices on the local network", icon: FaWifi, path: "/network-sync" },
-            { label: "Developer Mode", description: "Manage menu, staff, and POS setup", icon: FaGear, path: "/developer" },
-            { label: "SQLite Database Viewer", description: "Inspect local POS database", icon: FaGear, path: "/sqlite-db-viewer" },
+            { label: "Developer Mode", description: "Manage menu, categories, tables, and POS setup", icon: FaGear, path: "/developer" },
         ] : []),
         ...(role === "Manager" ? [
-            { label: "Menu & Staff", description: "Manage menu items, categories, and permitted staff accounts", icon: FaGear, path: "/developer" },
-        ] : []),
-        ...(role === "Assistant Manager" ? [
-            { label: "My Account", description: "Change your account password", icon: FaGear, path: "/developer" },
+            { label: "Menu Management", description: "Manage menu items and categories", icon: FaGear, path: "/developer" },
         ] : []),
     ];
 
@@ -40,7 +40,7 @@ const MoreSettings = () => {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {options.map(({ label, description, icon: Icon, path }) => (
-                        <Link key={label} to={path} className="flex items-start gap-4 rounded-[20px] bg-[#2a2a2a] p-5 transition-colors hover:bg-[#353535] focus:outline-none focus:ring-2 focus:ring-[#d3d3d3]">
+                        <Link key={label} to={path} state={{ from: "/more-settings" }} className="flex items-start gap-4 rounded-[20px] bg-[#2a2a2a] p-5 transition-colors hover:bg-[#353535] focus:outline-none focus:ring-2 focus:ring-[#d3d3d3]">
                             <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#3a3a3a] text-[#d3d3d3]">
                                 <Icon className="size-5" />
                             </span>
