@@ -22,6 +22,7 @@ const Customers = lazy(() => import("./pages/Customers.jsx"))
 const Inventory = lazy(() => import("./pages/Inventory.jsx"))
 const MoreSettings = lazy(() => import("./pages/MoreSettings.jsx"))
 const Tables = lazy(() => import("./pages/Tables.jsx"))
+const Delivery = lazy(() => import("./pages/Delivery.jsx"))
 
 function App() {
   useEffect(() => {
@@ -64,6 +65,24 @@ function App() {
     });
   }, [])
 
+  useEffect(() => {
+    if (!import.meta.env.VITE_FIREBASE_API_KEY
+      || !import.meta.env.VITE_FIREBASE_AUTH_DOMAIN
+      || !import.meta.env.VITE_FIREBASE_PROJECT_ID
+      || !import.meta.env.VITE_FIREBASE_APP_ID) return undefined;
+    let active = true;
+    let stopOrderListener;
+    void import("./utils/deliveryCloud").then(({ startDeliveryOrderSync }) => {
+      if (active) {
+        stopOrderListener = startDeliveryOrderSync();
+      }
+    }).catch((error) => console.error("Could not start delivery cloud sync:", error));
+    return () => {
+      active = false;
+      stopOrderListener?.();
+    };
+  }, [])
+
   return (
     <>
       <Router>
@@ -92,6 +111,7 @@ function AppRoutes() {
           <Route path="/Auth" element={<Auth />} />
           <Route path="/Tables" element={<Tables />} />
           <Route path="/Orders" element={<Orders />} />
+          <Route path="/delivery" element={["Admin", "Manager"].includes(currentUser?.role) ? <Delivery /> : <Navigate to="/" replace />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/network-sync" element={currentUser?.role === "Admin" ? <NetworkSync /> : <Navigate to="/" replace />} />
           <Route path="/customers" element={["Admin", "Manager", "Assistant Manager"].includes(currentUser?.role) ? <Customers /> : <Navigate to="/" replace />} />

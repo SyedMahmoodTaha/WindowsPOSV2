@@ -94,11 +94,11 @@ const BillLayoutControls = ({ template, onChange, onLogoUpload }) => {
                         Thermal right margin ({template.thermalRightMargin ?? 2} characters)
                         <input type="range" min="0" max="5" value={template.thermalRightMargin ?? 2} onChange={(event) => updateNumber("thermalRightMargin", event.target.value, 0, 5)} className="accent-[#d3d3d3]" />
                     </label>
+                    <label className="grid gap-1 text-xs text-[#ababab]">
+                        Left/right paper margin ({template.horizontalPaddingMm ?? 3}mm)
+                        <input type="range" min="0" max="8" step="0.5" value={template.horizontalPaddingMm ?? 3} onChange={(event) => updateNumber("horizontalPaddingMm", event.target.value, 0, 8)} className="accent-[#d3d3d3]" />
+                    </label>
                     {template.layout === "kot" && <>
-                        <label className="grid gap-1 text-xs text-[#ababab]">
-                            Horizontal paper margin ({template.horizontalPaddingMm ?? 3}mm)
-                            <input type="range" min="0" max="8" step="0.5" value={template.horizontalPaddingMm ?? 3} onChange={(event) => updateNumber("horizontalPaddingMm", event.target.value, 0, 8)} className="accent-[#d3d3d3]" />
-                        </label>
                         <label className="grid gap-1 text-xs text-[#ababab]">
                             Extra bottom feed ({template.kotBottomFeedLines ?? 0} lines)
                             <input type="range" min="0" max="20" value={template.kotBottomFeedLines ?? 0} onChange={(event) => updateNumber("kotBottomFeedLines", event.target.value, 0, 20)} className="accent-[#d3d3d3]" />

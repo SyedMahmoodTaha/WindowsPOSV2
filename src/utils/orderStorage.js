@@ -164,7 +164,7 @@ export const appendOrder = (order) => {
         void persistOrdersToDb(orders);
     }
     void pushOrdersToHost(orders);
-    window.dispatchEvent(new Event("pfl-orders-updated"));
+    window.dispatchEvent(new CustomEvent("pfl-orders-updated", { detail: { orderId: order.id } }));
     return order;
 };
 
@@ -177,7 +177,7 @@ export const updateOrder = (orderId, changes) => {
         void persistOrdersToDb(orders);
     }
     void pushOrdersToHost(orders);
-    window.dispatchEvent(new Event("pfl-orders-updated"));
+    window.dispatchEvent(new CustomEvent("pfl-orders-updated", { detail: { orderId } }));
     return orders.find((order) => order.id === orderId);
 };
 
@@ -256,6 +256,26 @@ const escapeHtml = (value) => String(value ?? "")
 
 export const renderReceiptHtml = (order, destination, configuredOptions = {}) => {
     const template = configuredOptions?.fields ? configuredOptions : defaultBillTemplates[0];
+    if (destination === "kitchen" && order.kotAction === "cancel-items") {
+        const paperWidth = template.paperWidth === 58 ? 58 : 80;
+        const removedItemsMarkup = (order.cart || []).map((item) => (
+            `<li><strong>${Number(item.quantity || 1)} ×</strong> ${escapeHtml(item.name || "")}</li>`
+        )).join("");
+        const orderLocation = order.orderType === "Table"
+            ? `Table: ${order.orderDetails?.tableNumber || order.tableNumber || "-"}`
+            : order.orderDetails?.customerName || order.customerName || order.orderType || "Order";
+        return `<!doctype html><html><head><meta charset="utf-8"><title>Items removed from order</title><style>
+            @page { size: ${paperWidth}mm auto; margin: 0; }
+            * { box-sizing: border-box; }
+            html, body { width: ${paperWidth}mm; margin: 0; padding: 0; }
+            body { padding: 3mm; color: #000; font: 700 14px/1.2 Verdana, Arial, sans-serif; overflow-wrap: anywhere; }
+            h1 { margin: 0 0 2mm; text-align: center; font-size: 18px; }
+            p { margin: 1.5mm 0; }
+            .divider { margin: 2mm 0; border-top: 1px dashed #000; }
+            ul { margin: 2mm 0 0; padding: 0; list-style: none; }
+            li { margin: 1.5mm 0; }
+        </style></head><body><h1>ITEM REMOVED</h1><p>Bill No.: ${escapeHtml(order.orderNumber || "-")}</p><p>${escapeHtml(orderLocation)}</p><div class="divider"></div><ul>${removedItemsMarkup}</ul></body></html>`;
+    }
     if (order.transferInfo) {
         const paperWidth = template.paperWidth === 58 ? 58 : 80;
         const { fromTable, toTable } = order.transferInfo;
@@ -278,8 +298,8 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
     }
     const currentUser = getCurrentUser();
     const cashierName = currentUser?.name || order.cashier || "Captain";
-    const deliveryCharge = Number(order.charges?.Delivery || order.deliveryCharge || 0);
-    const parcelCharge = Number(order.charges?.Parcel || order.parcelCharge || 0);
+    const deliveryCharge = order.orderType === "Table" ? 0 : Number(order.charges?.Delivery || order.deliveryCharge || 0);
+    const parcelCharge = order.orderType === "Table" ? 0 : Number(order.charges?.Parcel || order.parcelCharge || 0);
     const discount = Number(order.discount || 0);
     const customerName = order.orderDetails?.customerName || order.customerName || "";
     const phone = order.orderDetails?.phone || order.phone || "";
@@ -300,6 +320,7 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         template.gstNumber ? `GST: ${template.gstNumber}` : "",
     ].map((line) => String(line || "").trim()).filter(Boolean);
     const paperWidth = template.paperWidth === 58 ? 58 : 80;
+    const horizontalPaddingMm = Math.min(8, Math.max(0, Number(template.horizontalPaddingMm ?? 3)));
     if (template.layout === "lassi-shop" && destination !== "kitchen") {
         const cashierFontFamilies = {
             verdana: "Verdana, Arial, sans-serif",
@@ -317,10 +338,11 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
             ? ""
             : `${String(createdAt.getDate()).padStart(2, "0")}/${String(createdAt.getMonth() + 1).padStart(2, "0")}/${String(createdAt.getFullYear()).slice(-2)} ${String(createdAt.getHours()).padStart(2, "0")}:${String(createdAt.getMinutes()).padStart(2, "0")}`;
         const receiptType = order.orderType === "Table"
-            ? "Dine In"
+            ? (options.tableNumber && tableNumber ? `Table: ${tableNumber}` : "Dine In")
             : order.orderType === "Takeaway"
                 ? "Take Away"
                 : order.orderType || "Walk-in";
+        const showReceiptType = options.billType || (order.orderType === "Table" && options.tableNumber && tableNumber);
         const itemRows = orderItems.map((item) => {
             const quantity = Number(item.quantity || 0);
             const price = Number(item.price || 0);
@@ -329,14 +351,12 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         const logoMarkup = options.logo
             ? `<div class="logo"><img src="${escapeHtml(logoSrc)}" alt="Lassi Shop logo"></div>`
             : "";
+        const businessDetailsMarkup = `${template.gstNumber ? `<div class="header-detail">GST: ${escapeHtml(template.gstNumber)}</div>` : ""}${template.fssaiText ? `<div class="header-detail">${escapeHtml(template.fssaiText)}</div>` : ""}`;
         const customerMarkup = options.customerName || options.phone || options.address
             ? `<div class="customer-block">${options.customerName ? `<div><span>Name:</span> ${escapeHtml(customerName || "Walk-in")}${options.phone && phone ? ` <span>(M: ${escapeHtml(phone)})</span>` : ""}</div>` : ""}${options.address && address ? `<div><span>Addr:</span> ${escapeHtml(address)}</div>` : ""}</div>`
             : "";
-        const dateTypeMarkup = options.dateTime || options.billType
-            ? `<div class="meta-row">${options.dateTime ? `<span>Date: ${escapeHtml(receiptDateTime)}</span>` : "<span></span>"}${options.billType ? `<strong>${escapeHtml(receiptType)}</strong>` : ""}</div>`
-            : "";
-        const tableMarkup = order.orderType === "Table" && options.tableNumber && tableNumber
-            ? `<div class="meta-row"><span>Table:</span><strong>${escapeHtml(tableNumber)}</strong></div>`
+        const dateTypeMarkup = options.dateTime || showReceiptType
+            ? `<div class="meta-row">${options.dateTime ? `<span>Date: ${escapeHtml(receiptDateTime)}</span>` : "<span></span>"}${showReceiptType ? `<strong>${escapeHtml(receiptType)}</strong>` : ""}</div>`
             : "";
         const cashierBillMarkup = options.cashierName || options.billNumber
             ? `<div class="meta-row">${options.cashierName ? `<span>Cashier: ${escapeHtml(cashierName)}</span>` : "<span></span>"}${options.billNumber ? `<span>Bill No.: ${escapeHtml(order.orderNumber || "-")}</span>` : ""}</div>`
@@ -353,26 +373,31 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         const totalsMarkup = options.subtotal || options.deliveryCharges || options.parcelCharges || options.discount || options.total
             ? `<div class="totals">${options.subtotal ? `<div class="total-row"><span>Total Qty: ${totalQuantity}</span><span>Sub Total&nbsp; ${itemSubtotal.toFixed(2)}</span></div>` : ""}${deliveryMarkup}${parcelMarkup}${discountMarkup}${options.total ? `<div class="grand-total"><span>Grand Total</span><strong>₹${Number(order.total || 0).toFixed(2)}</strong></div>` : ""}</div>`
             : "";
+        const cashierFooterLines = [
+            template.footerText,
+            template.footerPhone ? `Phone: ${template.footerPhone}` : "",
+        ].map((line) => String(line || "").trim()).filter(Boolean);
         const footerMarkup = options.footer
-            ? `<footer>${footerLines.map((line) => `<div>${escapeHtml(line)}</div>`).join("")}</footer>`
+            ? `<footer>${cashierFooterLines.map((line) => `<div>${escapeHtml(line)}</div>`).join("")}</footer>`
             : "";
 
         return `<!doctype html><html><head><meta charset="utf-8"><title>Cashier Bill ${escapeHtml(order.orderNumber || "")}</title><style>
             @page { size: ${paperWidth}mm auto; margin: 0; }
             * { box-sizing: border-box; }
             html, body { width: ${paperWidth}mm; max-width: ${paperWidth}mm; margin: 0; padding: 0; }
-            body { padding: 3mm 5mm 3mm 3mm; color: #000; font: 700 ${cashierFontSize}px/1.2 ${cashierFontFamily}; overflow-wrap: anywhere; }
+            body { padding: 3mm ${horizontalPaddingMm}mm; color: #000; font: 700 ${cashierFontSize}px/1.2 ${cashierFontFamily}; overflow-wrap: anywhere; }
             .logo { display: flex; justify-content: center; align-items: center; margin: 0 auto 2mm; }
             .logo img { display: block; width: auto; max-width: 68%; max-height: 27mm; object-fit: contain; }
             .header-phone { margin: 0 0 3mm; text-align: center; font-size: 13px; font-weight: 700; }
+            .header-detail { margin: 0 0 2mm; text-align: center; }
             .customer-block { border-top: 1px solid #777; border-bottom: 1px solid #777; padding: 2mm 1mm; }
             .customer-block div { margin: 0.5mm 0; }
-            .customer-block div + div { border-top: 1px solid #aaa; padding-top: 1mm; }
             .customer-block span { font-weight: 400; }
             .meta-row { display: flex; justify-content: space-between; gap: 2mm; padding: 1mm 0; }
             .meta-row > * { min-width: 0; }
             .meta-row strong { text-align: right; }
             .items { width: 100%; margin-top: 1mm; border-collapse: collapse; table-layout: fixed; }
+            .items thead { border-top: 1px solid #777; }
             .items th, .items td { min-width: 0; padding: 1mm 0.5mm; text-align: left; vertical-align: top; }
             .items th { border-bottom: 1px solid #777; white-space: nowrap; }
             .items .item-name { width: 43%; overflow-wrap: anywhere; }
@@ -386,7 +411,7 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
             .grand-total { display: flex; justify-content: space-between; gap: 2mm; border-top: 1px solid #777; margin-top: 1mm; padding: 1.5mm 0; font-size: ${cashierTotalSize}px; }
             footer { margin-top: 2mm; text-align: center; font-size: 9px; line-height: 1.3; }
             @media print { body { margin: 0; } }
-        </style></head><body>${logoMarkup}${options.businessName ? `<div class="header-phone">${escapeHtml(template.headerPhoneNumber || "9611648843")}</div>` : ""}${customerMarkup}${dateTypeMarkup}${tableMarkup}${cashierBillMarkup}${options.items ? `<table class="items"><thead><tr><th>Item</th><th class="numeric">Qty.</th><th class="numeric">Price</th><th class="numeric">Amount</th></tr></thead><tbody>${itemRows}</tbody></table>` : ""}${totalsMarkup}${footerMarkup}</body></html>`;
+        </style></head><body>${logoMarkup}${options.businessName ? `<div class="header-phone">${escapeHtml(template.headerPhoneNumber || "9611648843")}</div>${businessDetailsMarkup}` : ""}${customerMarkup}${dateTypeMarkup}${cashierBillMarkup}${options.items ? `<table class="items"><thead><tr><th>Item</th><th class="numeric">Qty.</th><th class="numeric">Price</th><th class="numeric">Amount</th></tr></thead><tbody>${itemRows}</tbody></table>` : ""}${totalsMarkup}${footerMarkup}</body></html>`;
     }
     const fieldMarkup = {
         items: `<table><thead><tr><th>${escapeHtml(labels.item)}</th><th>${escapeHtml(labels.quantity)}</th>${options.itemPrice ? `<th>${escapeHtml(labels.itemPrice)}</th>` : ""}</tr></thead><tbody>${items}</tbody></table>`,
@@ -420,12 +445,38 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
     (template.dividers || []).forEach((divider) => {
         fieldMarkup[`divider:${divider.id}`] = `<div class="divider">${escapeHtml(divider.label || "")}</div>`;
     });
+    const customElements = template.layout === "custom"
+        ? (template.customElements || []).map((element) => {
+            const alignment = ["left", "center", "right"].includes(element.alignment) ? element.alignment : "left";
+            const width = Math.min(100, Math.max(25, Number(element.width) || 100));
+            const fontSize = Math.min(32, Math.max(9, Number(element.fontSize) || 14));
+            const marginLeft = alignment === "right" || alignment === "center" ? "auto" : "0";
+            const marginRight = alignment === "left" || alignment === "center" ? "auto" : "0";
+            const style = `width:${width}%;margin-left:${marginLeft};margin-right:${marginRight};text-align:${alignment};font-size:${fontSize}px;font-weight:${element.bold === false ? 400 : 700}`;
+            let content = "";
+            if (element.type === "text") {
+                content = `<div class="custom-text">${escapeHtml(element.text || "")}</div>`;
+            } else if (element.type === "divider") {
+                content = `<div class="divider">${escapeHtml(element.text || "")}</div>`;
+            } else if (element.type === "logo") {
+                content = template.logoDataUrl
+                    ? `<img class="custom-logo" src="${escapeHtml(template.logoDataUrl)}" alt="Logo" />`
+                    : `<div class="custom-placeholder">Upload a logo above</div>`;
+            } else if (element.type === "field") {
+                content = element.field === "logo"
+                    ? (template.logoDataUrl ? `<img class="custom-logo" src="${escapeHtml(template.logoDataUrl)}" alt="Logo" />` : `<div class="custom-placeholder">Upload a logo above</div>`)
+                    : element.field === "businessName"
+                        ? `<div>${escapeHtml(template.businessName || "Business name")}</div>`
+                        : (fieldMarkup[element.field] || "");
+            }
+            return content ? `<div class="custom-element" style="${style}">${content}</div>` : "";
+        }).join("")
+        : "";
     const fieldOrder = template.fieldOrder || Object.keys(fieldMarkup);
     const orderedFields = fieldOrder.filter((field) => (field.startsWith("divider:") || (field === "businessName" && isKotLayout) || options[field]) && fieldMarkup[field]);
     const bodyMarkup = orderedFields.map((field) => fieldMarkup[field]).join("");
 
     const alignment = template.alignment || "center";
-    const horizontalPaddingMm = Math.min(8, Math.max(0, Number(template.horizontalPaddingMm ?? 3)));
     const kotBottomFeedLines = isKotLayout ? Math.min(20, Math.max(0, Number(template.kotBottomFeedLines ?? 0))) : 0;
     const fontFamilies = {
         verdana: '"Verdana", Arial, sans-serif',
@@ -453,7 +504,7 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         body {
           font: 700 ${fontSize}px/${lineHeight} ${fontFamily};
           color: #000000;
-          padding: ${contentPadding}px 5mm ${isKotLayout ? `calc(${contentPadding}px + ${kotBottomFeedLines * fontSize * lineHeight}px)` : `${contentPadding}px`} ${isKotLayout ? `${horizontalPaddingMm}mm` : "3mm"};
+          padding: ${contentPadding}px ${horizontalPaddingMm}mm ${isKotLayout ? `calc(${contentPadding}px + ${kotBottomFeedLines * fontSize * lineHeight}px)` : `${contentPadding}px`} ${horizontalPaddingMm}mm;
           box-sizing: border-box;
           word-break: break-word;
           overflow-wrap: anywhere;
@@ -504,8 +555,13 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         .divider { display: flex; align-items: center; gap: 6px; max-width: 100%; margin: 10px 0; color: #000; font-size: ${Math.max(fontSize - 2, 10)}px; text-align: center; font-weight: 700; overflow-wrap: anywhere; }
         .divider::before, .divider::after { content: ""; flex: 1; border-top: 1px ${dividerStyle} #000; }
         .footer { max-width: 100%; text-align: center; margin-top: 12px; font-size: ${Math.max(fontSize - 2, 10)}px; color: #000; font-weight: 700; overflow-wrap: anywhere; }
+        .custom-element { min-width: 0; max-width: 100%; margin-top: ${rowSpacing}px; overflow-wrap: anywhere; }
+        .custom-element table { width: 100%; }
+        .custom-text { white-space: pre-wrap; }
+        .custom-logo { display: block; max-width: 100%; max-height: 30mm; margin: 0 auto; object-fit: contain; }
+        .custom-placeholder { color: #777; font-size: 10px; font-weight: 400; }
         @media print { body { margin: 0; } }
-    </style></head><body class="${isKotLayout ? "kot-layout" : ""}">${!isKotLayout && (options.logo || options.businessName) ? `<div class="header">${options.logo ? `<div class="logo-box"><img src="${escapeHtml(logoSrc)}" alt="Logo" /></div>` : ""}${options.businessName ? `<div class="brand">${escapeHtml(template.headerPhoneNumber || template.businessName || "Lassi Shop")}</div>` : ""}</div>` : ""}${!isKotLayout && template.headerText ? `<p class="footer">${escapeHtml(template.headerText)}</p>` : ""}${title ? `<div class="header-line"><h1>${title}</h1></div>` : ""}<div class="meta-box">${bodyMarkup}</div></body></html>`;
+    </style></head><body class="${isKotLayout ? "kot-layout" : ""}">${template.layout === "custom" ? customElements : `${!isKotLayout && (options.logo || options.businessName) ? `<div class="header">${options.logo ? `<div class="logo-box"><img src="${escapeHtml(logoSrc)}" alt="Logo" /></div>` : ""}${options.businessName ? `<div class="brand">${escapeHtml(template.headerPhoneNumber || template.businessName || "Lassi Shop")}</div>` : ""}</div>` : ""}${!isKotLayout && template.headerText ? `<p class="footer">${escapeHtml(template.headerText)}</p>` : ""}${title ? `<div class="header-line"><h1>${title}</h1></div>` : ""}<div class="meta-box">${bodyMarkup}</div>`}</body></html>`;
 };
 
 const printSingleOrder = async (order, destination, selectedTemplate) => {
@@ -525,7 +581,7 @@ const printSingleOrder = async (order, destination, selectedTemplate) => {
     return true;
 };
 
-export const printOrder = async (order, destination) => {
+export const printOrder = async (order, destination, { includeKitchenCopy = true } = {}) => {
     let settings = null;
     let templates = defaultBillTemplates;
     if (window.pflDesktop && window.pflDesktop.getPrinterSettings) {
@@ -540,7 +596,7 @@ export const printOrder = async (order, destination) => {
         templates = settings?.billTemplates || readLocalBillTemplates();
     }
 
-    const destinations = destination === "cashier" && settings?.printCashierToKitchen
+    const destinations = includeKitchenCopy && destination === "cashier" && settings?.printCashierToKitchen
         ? ["cashier", "kitchen"]
         : [destination];
     try {
