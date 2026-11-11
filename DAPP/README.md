@@ -2,6 +2,8 @@
 
 The rider app is a mobile-first installable web app (PWA) for iOS and Android. The POS and rider app share Firebase Authentication and Cloud Firestore over the internet; rider phones do not need the shop Wi-Fi password. It uses the POS palette and allows riders to choose deliveries, with a five-active-order limit.
 
+When Firebase is not configured, choose **Preview rider app** to open the interactive sample demo. The initial screen is the rider dashboard, with counts for orders with the rider, available orders, orders on the way, and completed orders. Use **Picked-up** and **Available orders** to switch between the corresponding sample orders. Claim sample orders, progress statuses, enter split collections, simulate a POS item update or incoming order, and reset the demo. These actions change sample data in the current page only; they never connect to Firebase or modify real POS orders.
+
 ## Firebase setup
 
 1. Create a Firebase project and register a Web app. Enable **Authentication > Email/Password** and create one Firebase Authentication account for each rider plus one for the POS delivery manager. Use individual rider accounts; do not share passwords.
@@ -20,7 +22,7 @@ The rider app is a mobile-first installable web app (PWA) for iOS and Android. T
 
    Set each document ID to the Firebase Authentication user's UID. Only the manager can manage rider profiles. The POS page shows these profiles and the rider's last location only while they have active orders and are sharing it.
 4. Copy `DAPP/.env.example` to both `DAPP/.env` and the POS root `.env`. Fill in the same Firebase web app values (`apiKey`, `authDomain`, `projectId`, `appId`) in both. These are Firebase client configuration values, not service-account credentials. Never put a Firebase service-account/private key in either app.
-5. From `DAPP/`, run `npm install`, then `npm run dev` for local browser testing. Deploy with the Firebase CLI (`firebase deploy --only hosting,firestore:rules --project your-project-id` from `DAPP/`), or host `npm run build` output (`DAPP/dist`) on another HTTPS static host and publish the rules separately. Install the deployed app from the browser's **Add to Home Screen** action on iOS/Android. Location permission and PWA install require HTTPS on the deployed site.
+5. From `DAPP/`, run `npm install`, then `npm run dev` for local browser testing (Vite uses port `5173` by default). Deploy with the Firebase CLI (`firebase deploy --only hosting,firestore:rules --project your-project-id` from `DAPP/`), or host `npm run build` output (`DAPP/dist`) on another HTTPS static host and publish the rules separately. Install the deployed app from the browser's **Add to Home Screen** action on iOS/Android. Location permission and PWA install require HTTPS on the deployed site.
 6. In the POS, run `npm install` if needed, build/start the POS, open **Delivery**, and sign in using the manager account. After sign-in, new and existing POS delivery orders are synced to Firestore.
 
 The POS root package includes the Firebase SDK. For mobile development, `DAPP` is a separate Vite app with its own dependencies and build.
