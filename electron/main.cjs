@@ -1209,7 +1209,7 @@ const createWindow = () => {
     return window;
 };
 
-const printOrder = async (event, { html, order, destination }) => {
+const printOrder = async (event, { html, order, destination, paperWidth }) => {
     const printer = await resolvePrinterSetting(event, destination);
     const networkPrinter = typeof printer === "object" && printer && printer.host
         ? { host: printer.host, port: Number(printer.port) || 9100 }
@@ -1236,10 +1236,39 @@ const printOrder = async (event, { html, order, destination }) => {
         throw new Error(`No ${destination} printer is available. Connect a printer or configure one in Printer Settings.`);
     }
 
-    const printWindow = new BrowserWindow({ show: false });
+    const printWindow = new BrowserWindow({ show: false, width: 400, height: 100 });
     await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    let contentHeight;
+    try {
+        await printWindow.webContents.executeJavaScript(`Promise.all(Array.from(document.images, async (image) => {
+            try {
+                await image.decode();
+            } catch {
+                throw new Error("A receipt logo could not be loaded. Re-upload the logo and try printing again.");
+            }
+        }))`);
+        contentHeight = await printWindow.webContents.executeJavaScript(
+            "document.body.getBoundingClientRect().height",
+        );
+    } catch (error) {
+        printWindow.close();
+        throw error;
+    }
+    if (!Number.isFinite(contentHeight) || contentHeight <= 0) {
+        printWindow.close();
+        throw new Error("Could not determine the receipt size for printing.");
+    }
     return new Promise((resolve, reject) => {
-        const printOptions = { silent: true, deviceName };
+        const printOptions = {
+            silent: true,
+            deviceName,
+            printBackground: true,
+            margins: { marginType: "none" },
+            pageSize: {
+                width: paperWidth === 58 ? 58000 : 80000,
+                height: Math.ceil((contentHeight * 25400) / 96) + 3000,
+            },
+        };
 
         printWindow.webContents.print(printOptions, (success, failureReason) => {
             printWindow.close();

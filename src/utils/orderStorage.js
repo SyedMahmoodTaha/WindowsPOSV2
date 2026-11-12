@@ -453,7 +453,7 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         body {
           font: 700 ${fontSize}px/${lineHeight} ${fontFamily};
           color: #000000;
-          padding: ${contentPadding}px 5mm ${isKotLayout ? `calc(${contentPadding}px + ${kotBottomFeedLines * fontSize * lineHeight}px)` : `${contentPadding}px`} ${isKotLayout ? `${horizontalPaddingMm}mm` : "3mm"};
+          padding: ${contentPadding}px ${isKotLayout ? `${horizontalPaddingMm}mm` : "3mm"} ${isKotLayout ? `calc(${contentPadding}px + ${kotBottomFeedLines * fontSize * lineHeight}px)` : `${contentPadding}px`} ${isKotLayout ? `${horizontalPaddingMm}mm` : "3mm"};
           box-sizing: border-box;
           word-break: break-word;
           overflow-wrap: anywhere;
@@ -511,7 +511,12 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
 const printSingleOrder = async (order, destination, selectedTemplate) => {
     const html = renderReceiptHtml(order, destination, selectedTemplate || defaultBillTemplates[0]);
     if (window.pflDesktop) {
-        await window.pflDesktop.printOrder({ html, order, destination });
+        await window.pflDesktop.printOrder({
+            html,
+            order,
+            destination,
+            paperWidth: selectedTemplate?.paperWidth === 58 ? 58 : 80,
+        });
         return true;
     }
 
