@@ -9,6 +9,7 @@
     "dev": "vite",
     "build": "vite build",
     "desktop": "npm run build && electron .",
+    "desktop:mac": "npm run build && electron-builder --mac dir --arm64 --config.directories.output=PFLTB",
     "desktop:win": "npm run build && electron-builder --win dir --x64 && node -e \"const fs=require('node:fs'); const cp=require('node:child_process'); const exe='release/win-unpacked/Tyep.exe'; if (!fs.existsSync(exe)) { console.error('Windows app executable not found in release/win-unpacked/.'); process.exit(1); } console.log('Launching:', exe); cp.spawn(exe,{stdio:'inherit',shell:false});\"",
     "dist": "npm run build && electron-builder --win nsis --x64 --publish never",
     "lint": "oxlint",
