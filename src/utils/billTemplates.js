@@ -45,6 +45,25 @@ export const DEFAULT_FIELD_LABELS = {
 
 const allFields = BILL_FIELD_DEFINITIONS.reduce((fields, field) => ({ ...fields, [field.key]: true }), {});
 const defaultFieldOrder = BILL_FIELD_DEFINITIONS.map((field) => field.key);
+const customElementTypes = new Set(["field", "text", "divider", "logo"]);
+
+const normalizeCustomElements = (elements = []) => (Array.isArray(elements) ? elements : [])
+    .slice(0, 100)
+    .filter((element) => element && typeof element === "object" && customElementTypes.has(element.type))
+    .map((element, index) => ({
+        id: typeof element.id === "string" && element.id ? element.id : `custom-element-${index}`,
+        type: element.type,
+        ...(element.type === "field"
+            ? { field: BILL_FIELD_DEFINITIONS.some(({ key }) => key === element.field) ? element.field : "items" }
+            : {}),
+        ...(element.type === "text" || element.type === "divider"
+            ? { text: typeof element.text === "string" ? element.text.slice(0, 500) : "" }
+            : {}),
+        alignment: ["left", "center", "right"].includes(element.alignment) ? element.alignment : "left",
+        fontSize: Math.min(32, Math.max(9, Number(element.fontSize) || 14)),
+        width: Math.min(100, Math.max(25, Number(element.width) || 100)),
+        bold: element.bold !== false,
+    }));
 
 export const createBillTemplate = (overrides = {}) => ({
     id: overrides.id || `template-${Date.now()}`,
@@ -83,6 +102,7 @@ export const createBillTemplate = (overrides = {}) => ({
     fieldLabels: { ...DEFAULT_FIELD_LABELS, ...(overrides.fieldLabels || {}) },
     fieldOrder: Array.isArray(overrides.fieldOrder) ? overrides.fieldOrder : defaultFieldOrder,
     dividers: Array.isArray(overrides.dividers) ? overrides.dividers : [],
+    customElements: normalizeCustomElements(overrides.customElements),
 });
 
 export const defaultBillTemplates = [

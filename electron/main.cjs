@@ -582,6 +582,24 @@ const createEscPosReceipt = (order, destination, template) => {
         output.push("\x1d\x56\x00");
         return serializeOutput();
     }
+    if (destination === "kitchen" && order.kotAction === "cancel-items") {
+        output.push("\x1b\x61\x01");
+        addWrappedText("ITEM REMOVED", Number(template?.titleSize) || fontSize);
+        output.push("\x1b\x61\x00");
+        addWrappedText(`Bill No.: ${order.orderNumber || "-"}`);
+        const orderLocation = order.orderType === "Table"
+            ? `Table: ${order.orderDetails?.tableNumber || order.tableNumber || "-"}`
+            : order.orderDetails?.customerName || order.customerName || order.orderType || "Order";
+        addWrappedText(orderLocation);
+        add(dashLine);
+        for (const item of order.cart || []) {
+            wrapText(`${Number(item.quantity || 1)} x ${item.name || ""}`, Math.max(1, width - padding))
+                .forEach((line) => add(line));
+        }
+        output.push("\n\n");
+        output.push("\x1d\x56\x00");
+        return serializeOutput();
+    }
     if (template?.layout === "lassi-shop" && destination !== "kitchen") {
         const items = Array.isArray(order.cart) ? order.cart : [];
         const customerName = order.orderDetails?.customerName || order.customerName || "Walk-in";
@@ -637,22 +655,22 @@ const createEscPosReceipt = (order, destination, template) => {
                 itemLines.forEach((name, index) => add(rowText(
                     name,
                     index === 0 ? String(quantity) : "",
-                    index === 0 ? price.toFixed(2) : "",
-                    index === 0 ? (price * quantity).toFixed(2) : "",
+                    index === 0 ? String(Math.round(price)) : "",
+                    index === 0 ? String(Math.round(price * quantity)) : "",
                 )));
                 if (item.note && fields.note) addWrappedText(item.note, Math.max(10, fontSize - 2), false);
             });
             if (dashLine) add(dashLine);
         }
-        if (fields.subtotal) add(leftRight(`Total Qty: ${totalQuantity}`, `Sub Total  ${itemSubtotal.toFixed(2)}`));
+        if (fields.subtotal) add(leftRight(`Total Qty: ${totalQuantity}`, `Sub Total  ${Math.round(itemSubtotal)}`));
         if (fields.deliveryCharges && Number(order.charges?.Delivery || order.deliveryCharge || 0) > 0) {
-            add(leftRight("Delivery Charge", Number(order.charges?.Delivery || order.deliveryCharge).toFixed(2)));
+            add(leftRight("Delivery Charge", String(Math.round(Number(order.charges?.Delivery || order.deliveryCharge)))));
         }
         if (fields.parcelCharges && Number(order.charges?.Parcel || order.parcelCharge || 0) > 0) {
-            add(leftRight("Parcel Charge", Number(order.charges?.Parcel || order.parcelCharge).toFixed(2)));
+            add(leftRight("Parcel Charge", String(Math.round(Number(order.charges?.Parcel || order.parcelCharge)))));
         }
-        if (fields.discount && Number(order.discount || 0) > 0) add(leftRight("Discount", `-${Number(order.discount).toFixed(2)}`));
-        if (fields.total) add(leftRight("Grand Total", `₹${Number(order.total || 0).toFixed(2)}`, {
+        if (fields.discount && Number(order.discount || 0) > 0) add(leftRight("Discount", `-${Math.round(Number(order.discount))}`));
+        if (fields.total) add(leftRight("Grand Total", `₹${Math.round(Number(order.total || 0))}`, {
             boldLeft: template?.boldTotal !== false,
             boldRight: template?.boldTotal !== false,
             size: Number(template?.totalSize) || fontSize,
@@ -1238,37 +1256,8 @@ const printOrder = async (event, { html, order, destination, paperWidth }) => {
 
     const printWindow = new BrowserWindow({ show: false, width: 400, height: 100 });
     await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-    let contentHeight;
-    try {
-        await printWindow.webContents.executeJavaScript(`Promise.all(Array.from(document.images, async (image) => {
-            try {
-                await image.decode();
-            } catch {
-                throw new Error("A receipt logo could not be loaded. Re-upload the logo and try printing again.");
-            }
-        }))`);
-        contentHeight = await printWindow.webContents.executeJavaScript(
-            "document.body.getBoundingClientRect().height",
-        );
-    } catch (error) {
-        printWindow.close();
-        throw error;
-    }
-    if (!Number.isFinite(contentHeight) || contentHeight <= 0) {
-        printWindow.close();
-        throw new Error("Could not determine the receipt size for printing.");
-    }
     return new Promise((resolve, reject) => {
-        const printOptions = {
-            silent: true,
-            deviceName,
-            printBackground: true,
-            margins: { marginType: "none" },
-            pageSize: {
-                width: paperWidth === 58 ? 58000 : 80000,
-                height: Math.ceil((contentHeight * 25400) / 96) + 3000,
-            },
-        };
+        const printOptions = { silent: true, deviceName };
 
         printWindow.webContents.print(printOptions, (success, failureReason) => {
             printWindow.close();

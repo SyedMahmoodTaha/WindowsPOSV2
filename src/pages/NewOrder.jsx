@@ -16,6 +16,8 @@ const formatCurrency = (amount) => new Intl.NumberFormat("en-IN", {
     maximumFractionDigits: 2,
 }).format(amount);
 
+const toPaise = (value) => Math.round((Number(value) || 0) * 100);
+
 const orderTypeFields = {
     Table: [
         { name: "tableNumber", label: "Table number", placeholder: "e.g. R1, L2, F1" },
@@ -77,7 +79,14 @@ const NewOrder = () => {
     const [orderDetails, setOrderDetails] = useState({});
     const [shortcutCode, setShortcutCode] = useState("");
     const [shortcutError, setShortcutError] = useState("");
+    const [kotSearch, setKotSearch] = useState("");
+    const [orderLookupError, setOrderLookupError] = useState("");
+    const [paymentStatus, setPaymentStatus] = useState("due");
+    const [existingKotNumber, setExistingKotNumber] = useState(null);
     const [charges, setCharges] = useState(orderCharges);
+    const [prepaidCash, setPrepaidCash] = useState("");
+    const [prepaidOnline, setPrepaidOnline] = useState("");
+    const [paymentError, setPaymentError] = useState("");
     const [menuSearch, setMenuSearch] = useState("");
     const [heldOrders, setHeldOrders] = useState(() => {
         try {
@@ -176,7 +185,15 @@ const NewOrder = () => {
             setOrderType(existingOrderType);
             setOrderDetails(getOrderDetailsForType(existingOrderType, existingOrder.orderDetails || {}));
             setCharges(existingOrder.charges || orderCharges);
+            setPrepaidCash(existingOrder.deliveryPayment?.prepaidCashPaise
+                ? (existingOrder.deliveryPayment.prepaidCashPaise / 100).toFixed(2)
+                : "");
+            setPrepaidOnline(existingOrder.deliveryPayment?.prepaidOnlinePaise
+                ? (existingOrder.deliveryPayment.prepaidOnlinePaise / 100).toFixed(2)
+                : "");
             setOrderNote(existingOrder.orderNote || "");
+            setPaymentStatus(existingOrder.paymentStatus === "paid" ? "paid" : "due");
+            setExistingKotNumber(existingOrder.orderNumber || existingOrder.id);
         }
 
         const selectedMenuItem = location.state?.selectedMenuItem;
@@ -278,6 +295,11 @@ const NewOrder = () => {
     };
 
     const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const selectedQuantityByProduct = cart.reduce((quantities, item) => {
+        const productId = getCartProductId(item);
+        if (productId) quantities.set(productId, (quantities.get(productId) || 0) + Number(item.quantity || 0));
+        return quantities;
+    }, new Map());
     const charge = Number.parseFloat(charges[orderType]) || 0;
     const total = subtotal + charge;
     const visibleItems = selectedCategory === "Favourites"
@@ -337,20 +359,44 @@ const NewOrder = () => {
         setShortcutError("");
     };
 
+    const handleOrderLookup = (event) => {
+        if (event.key !== "Enter") return;
+
+        const searchValue = kotSearch.trim();
+        if (!searchValue) return;
+
+        const order = orderHistory.find((candidate) => (
+            String(candidate.orderNumber || "").toLowerCase() === searchValue.toLowerCase()
+        ));
+
+        if (!order) {
+            setOrderLookupError("KOT not found");
+            return;
+        }
+
+        setOrderLookupError("");
+        setKotSearch("");
+        navigate("/new-order", {
+            state: { from: location.state?.from || "/", existingOrder: order },
+        });
+    };
+
     const handleChargeChange = (event) => {
         const value = event.target.value;
-        const limitedValue = (orderType === "Parcel" || orderType === "Takeaway") && Number(value) > 10
-            ? "10"
-            : value;
         setCharges((currentCharges) => ({
             ...currentCharges,
-            [orderType]: limitedValue,
+            [orderType]: value,
         }));
     };
 
     const changeOrderType = (type) => {
         setOrderType(type);
         setOrderTypeError("");
+        setPaymentError("");
+        if (type !== "Delivery") {
+            setPrepaidCash("");
+            setPrepaidOnline("");
+        }
         setOrderDetails(getOrderDetailsForType(type, orderDetails));
         setCharges(orderCharges);
         setDetailsOpen(false);
@@ -371,6 +417,9 @@ const NewOrder = () => {
             orderType,
             orderDetails: getOrderDetailsForType(orderType, orderDetails),
             charges,
+            prepaidCash,
+            prepaidOnline,
+            paymentStatus,
             total,
             orderNote,
             label: orderType || "Unassigned order",
@@ -383,9 +432,16 @@ const NewOrder = () => {
         setOrderDetails({});
         setOrderNote("");
         setCharges(orderCharges);
+        setPrepaidCash("");
+        setPrepaidOnline("");
+        setPaymentError("");
+        setPaymentStatus("due");
         setDetailsOpen(false);
         setActiveHeldOrderId(null);
         setIsEditingExistingOrder(false);
+        existingOrderRef.current = null;
+        originalCartRef.current = [];
+        setExistingKotNumber(null);
     };
 
     const restoreHeldOrder = (heldOrder) => {
@@ -394,6 +450,9 @@ const NewOrder = () => {
         setOrderDetails(heldOrder.orderDetails);
         setOrderNote(heldOrder.orderNote || "");
         setCharges(heldOrder.charges);
+        setPrepaidCash(heldOrder.prepaidCash || "");
+        setPrepaidOnline(heldOrder.prepaidOnline || "");
+        setPaymentStatus(heldOrder.paymentStatus || "due");
         setDetailsOpen(false);
         setActiveHeldOrderId(heldOrder.id);
         setHoldDrawerOpen(false);
@@ -424,10 +483,18 @@ const NewOrder = () => {
         setOrderType("");
         setOrderDetails({});
         setOrderNote("");
+        setPaymentStatus("due");
         setCharges(orderCharges);
+        setPrepaidCash("");
+        setPrepaidOnline("");
+        setPaymentError("");
         setDetailsOpen(false);
         setSummaryOpen(false);
         setActiveHeldOrderId(null);
+        existingOrderRef.current = null;
+        originalCartRef.current = [];
+        setIsEditingExistingOrder(false);
+        setExistingKotNumber(null);
     };
 
     const holdCollisionOrder = () => {
@@ -462,12 +529,30 @@ const NewOrder = () => {
         });
     };
 
+    const removedItems = () => {
+        const currentItems = new Map(cart.map((item) => [item.id, item]));
+        return originalCartRef.current.flatMap((item) => {
+            const currentItem = currentItems.get(item.id);
+            const removedQuantity = Number(item.quantity || 0) - Number(currentItem?.quantity || 0);
+            return removedQuantity > 0 ? [{ ...item, quantity: removedQuantity }] : [];
+        });
+    };
+
     const completeOrder = (status, destination = null) => {
-        if (cart.length === 0) return;
+        if (cart.length === 0 && !existingOrderRef.current) return;
         if (!orderType) {
             setOrderTypeError("Choose Table, Parcel / Takeaway, or Delivery before saving or sending a KOT.");
             return;
         }
+        const prepaidCashPaise = toPaise(prepaidCash);
+        const prepaidOnlinePaise = toPaise(prepaidOnline);
+        if (orderType === "Delivery" && (prepaidCashPaise < 0 || prepaidOnlinePaise < 0
+            || prepaidCashPaise + prepaidOnlinePaise > toPaise(total))) {
+            setPaymentError("Payment received before delivery cannot be more than the order total.");
+            setSummaryOpen(true);
+            return;
+        }
+        setPaymentError("");
 
         const order = {
             ...(existingOrderRef.current || {}),
@@ -481,6 +566,10 @@ const NewOrder = () => {
             ...(getCustomerId(orderDetails.phone) ? { customerId: getCustomerId(orderDetails.phone) } : {}),
             ...(orderType === "Delivery" ? {
                 deliveryDispatch: createDeliveryDispatch(existingOrderRef.current?.deliveryDispatch),
+                deliveryPayment: {
+                    prepaidCashPaise,
+                    prepaidOnlinePaise,
+                },
             } : {}),
             temporaryTable: orderType === "Table" && Boolean(orderDetails.tableNumber) && !readTablesAsync
                 ? false
@@ -489,6 +578,7 @@ const NewOrder = () => {
             subtotal,
             total,
             orderNote,
+            paymentStatus,
             status,
             destination,
             createdAt: new Date().toISOString(),
@@ -497,7 +587,21 @@ const NewOrder = () => {
         if (existingOrderRef.current) {
             updateOrder(order.id, order);
             const itemsToPrint = changedItems();
-            if (destination && itemsToPrint.length > 0) {
+            const itemsRemoved = removedItems();
+            if (destination === "kitchen" && itemsRemoved.length > 0) {
+                const removalSlip = {
+                    ...order,
+                    cart: itemsRemoved,
+                    kotAction: "cancel-items",
+                };
+                void (async () => {
+                    await printOrder(removalSlip, "kitchen");
+                    if (itemsToPrint.length > 0) {
+                        const changedSubtotal = itemsToPrint.reduce((sum, item) => sum + item.price * item.quantity, 0);
+                        await printOrder({ ...order, cart: itemsToPrint, subtotal: changedSubtotal, total: changedSubtotal }, destination);
+                    }
+                })();
+            } else if (destination && itemsToPrint.length > 0) {
                 const changedSubtotal = itemsToPrint.reduce((sum, item) => sum + item.price * item.quantity, 0);
                 printOrder({ ...order, cart: itemsToPrint, subtotal: changedSubtotal, total: changedSubtotal }, destination);
             }
@@ -587,16 +691,45 @@ const NewOrder = () => {
                     </aside>
 
                     <section className="scrollbar-hide min-h-0 overflow-y-auto lg:pl-4">
-                        <div className="mb-4 flex items-center justify-between gap-3">
+                        <div className="mb-4">
                             <h2 className="text-xl font-semibold">Menu</h2>
-                            <input
-                                type="search"
-                                value={menuSearch}
-                                onChange={(event) => setMenuSearch(event.target.value)}
-                                placeholder="Search by name"
-                                aria-label="Search menu by name"
-                                className="min-w-0 flex-1 rounded-[10px] border border-[#444444] bg-[#1f1f1f] px-3 py-2 text-sm text-[#f5f5f5] outline-none placeholder:text-[#777777] focus:border-[#d3d3d3]"
-                            />
+                            <div className="mt-2 grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2">
+                                <input
+                                    type="search"
+                                    value={menuSearch}
+                                    onChange={(event) => setMenuSearch(event.target.value)}
+                                    placeholder="Search menu"
+                                    aria-label="Search menu by name"
+                                    className="min-w-0 rounded-[10px] border border-[#444444] bg-[#1f1f1f] px-2 py-2 text-sm text-[#f5f5f5] outline-none placeholder:text-[#777777] focus:border-[#d3d3d3]"
+                                />
+                                <input
+                                    type="search"
+                                    value={kotSearch}
+                                    onChange={(event) => {
+                                        setKotSearch(event.target.value);
+                                        setOrderLookupError("");
+                                    }}
+                                    onKeyDown={handleOrderLookup}
+                                    placeholder="KOT"
+                                    aria-label="Find order by KOT number"
+                                    className="min-w-0 rounded-[10px] border border-[#444444] bg-[#1f1f1f] px-2 py-2 text-sm text-[#f5f5f5] outline-none placeholder:text-[#777777] focus:border-[#d3d3d3]"
+                                />
+                                <input
+                                    type="text"
+                                    value={shortcutCode}
+                                    onChange={(event) => {
+                                        setShortcutCode(event.target.value);
+                                        setShortcutError("");
+                                    }}
+                                    onKeyDown={handleShortcutSubmit}
+                                    placeholder="Item code"
+                                    inputMode="numeric"
+                                    aria-label="Add item by item code"
+                                    className="min-w-0 rounded-[10px] border border-[#444444] bg-[#1f1f1f] px-2 py-2 text-sm text-[#f5f5f5] outline-none placeholder:text-[#777777] focus:border-[#d3d3d3]"
+                                />
+                            </div>
+                            {orderLookupError && <p className="mt-1 text-xs text-[#f08080]" role="alert">{orderLookupError}</p>}
+                            {shortcutError && <p className="mt-1 text-xs text-[#f08080]" role="alert">{shortcutError}</p>}
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                             {filteredItems.length === 0 && selectedCategory === "Frequently Used" && !searchTerm && (
@@ -604,8 +737,9 @@ const NewOrder = () => {
                                     Frequently used items will appear here after completed orders.
                                 </p>
                             )}
-                            {filteredItems.map((menuItem) => (
-                                <button
+                            {filteredItems.map((menuItem) => {
+                                const selectedQuantity = selectedQuantityByProduct.get(String(menuItem.id)) || 0;
+                                return <button
                                     key={menuItem.id}
                                     type="button"
                                     onClick={() => selectMenuItem(menuItem)}
@@ -613,21 +747,25 @@ const NewOrder = () => {
                                 >
                                     <div className="flex items-center justify-between gap-2">
                                         <p className="text-xs uppercase tracking-wider text-[#ababab] group-hover:text-[#555555]">{menuItem.category}</p>
-                                        <span
-                                            title={menuItem.diet === "veg" ? "Vegetarian" : "Non-vegetarian"}
-                                            aria-label={menuItem.diet === "veg" ? "Vegetarian" : "Non-vegetarian"}
-                                            className={`size-3 rounded-full ${menuItem.diet === "veg"
-                                                ? "bg-[#38a169]"
-                                                : "bg-[#e53e3e]"}`}
-                                        >
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            {selectedQuantity > 0 && <span className="rounded-full bg-[#d3d3d3] px-2 py-0.5 text-xs font-bold text-[#1a1a1a] group-hover:bg-[#1a1a1a] group-hover:text-white" aria-label={`${selectedQuantity} selected`}>
+                                                ×{selectedQuantity}
+                                            </span>}
+                                            <span
+                                                title={menuItem.diet === "veg" ? "Vegetarian" : "Non-vegetarian"}
+                                                aria-label={menuItem.diet === "veg" ? "Vegetarian" : "Non-vegetarian"}
+                                                className={`size-3 rounded-full ${menuItem.diet === "veg"
+                                                    ? "bg-[#38a169]"
+                                                    : "bg-[#e53e3e]"}`}
+                                            />
+                                        </div>
                                     </div>
                                     <div className="mt-3 flex items-start gap-3">
                                         <h3 className="min-w-0 flex-1 break-normal whitespace-normal text-sm font-semibold leading-tight sm:text-base">{menuItem.name}</h3>
                                     </div>
                                     <span className="mt-auto self-end whitespace-nowrap font-semibold">{formatCurrency(menuItem.price)}</span>
-                                </button>
-                            ))}
+                                </button>;
+                            })}
                         </div>
                     </section>
                     </section>
@@ -769,30 +907,31 @@ const NewOrder = () => {
                             <div className="flex items-center justify-between border-b border-[#444444] pb-4">
                                 <div className="flex items-center gap-3">
                                     <FaShoppingCart className="text-[#d3d3d3]" />
-                                    <h2 className="text-xl font-semibold">Current Order</h2>
+                                    <div>
+                                        <h2 className="text-xl font-semibold">Current Order</h2>
+                                        {isEditingExistingOrder && <p className="text-xs text-[#ababab]">KOT {existingKotNumber || "-"}</p>}
+                                    </div>
                                 </div>
                                 <div className="text-right">
                                     <div className="flex items-center gap-2">
                                         <button type="button" onClick={openOrderNote} className={`flex size-8 items-center justify-center rounded-[10px] border transition-colors ${orderNote ? "border-[#d3d3d3] bg-[#d3d3d3] text-[#1a1a1a]" : "border-[#444444] text-[#ababab] hover:bg-[#3a3a3a] hover:text-[#f5f5f5]"}`} aria-label="Add order note" title="Add order note">
                                             <FaRegStickyNote className="size-4" />
                                         </button>
+                                        <button
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={paymentStatus === "paid"}
+                                            aria-label={`Payment status: ${paymentStatus === "paid" ? "Paid" : "Due"}`}
+                                            title={`Payment status: ${paymentStatus === "paid" ? "Paid" : "Due"}`}
+                                            onClick={() => setPaymentStatus((currentStatus) => currentStatus === "paid" ? "due" : "paid")}
+                                            className={`flex size-8 items-center justify-center rounded-[10px] text-[9px] font-bold text-white transition-colors ${paymentStatus === "paid" ? "bg-[#38a169] hover:bg-[#2f855a]" : "bg-[#e53e3e] hover:bg-[#c53030]"}`}
+                                        >
+                                            {paymentStatus === "paid" ? "Paid" : "Due"}
+                                        </button>
                                         <button type="button" onClick={clearOrder} disabled={cart.length === 0} className="flex size-8 items-center justify-center rounded-[10px] border border-[#444444] text-[#ababab] transition-colors hover:border-[#f08080] hover:bg-[#f08080] hover:text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-40" aria-label="Clear current order" title="Clear current order">
                                             <FaTrashCan className="size-4" />
                                         </button>
-                                        <input
-                                            value={shortcutCode}
-                                            onChange={(event) => {
-                                                setShortcutCode(event.target.value);
-                                                setShortcutError("");
-                                            }}
-                                            onKeyDown={handleShortcutSubmit}
-                                            placeholder="Code"
-                                            inputMode="numeric"
-                                            aria-label="Add item by shortcut code"
-                                            className="w-16 rounded-[10px] border border-[#444444] bg-[#1f1f1f] px-2 py-1 text-center text-sm text-[#f5f5f5] outline-none placeholder:text-[#777777] focus:border-[#d3d3d3]"
-                                        />
                                     </div>
-                                    {shortcutError && <p className="mt-1 text-[10px] text-[#f08080]">{shortcutError}</p>}
                                 </div>
                             </div>
 
@@ -808,7 +947,12 @@ const NewOrder = () => {
                                         {cart.map((item) => (
                                             <div key={item.id} className="flex items-center justify-between gap-3">
                                                 <div className="min-w-0">
-                                                    <p className="truncate font-medium">{item.name}</p>
+                                                    <div className="flex min-w-0 items-center gap-2">
+                                                        <p className="truncate font-medium">{item.name}</p>
+                                                        <span className="shrink-0 rounded-full bg-[#3a3a3a] px-2 py-0.5 text-xs font-semibold text-[#d3d3d3]" aria-label={`${item.quantity} selected`}>
+                                                            ×{item.quantity}
+                                                        </span>
+                                                    </div>
                                                     <p className="text-sm text-[#ababab]">{formatCurrency(item.price)} each</p>
                                                     {item.note && <p className="truncate text-xs italic text-[#ababab]">Note: {item.note}</p>}
                                                 </div>
@@ -855,7 +999,7 @@ const NewOrder = () => {
                                     </span>
                                     <span>{formatCurrency(total)}</span>
                                 </button>
-                                <div className={`grid overflow-hidden transition-[max-height,opacity,margin] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] ${summaryOpen ? "mt-2 max-h-32 opacity-100" : "mt-0 max-h-0 opacity-0"}`}>
+                                <div className={`grid overflow-hidden transition-[max-height,opacity,margin] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] ${summaryOpen ? "mt-2 max-h-64 opacity-100" : "mt-0 max-h-0 opacity-0"}`}>
                                     <div className="flex items-center justify-between px-2 text-sm text-[#ababab]">
                                         <span>Items subtotal</span>
                                         <span>{formatCurrency(subtotal)}</span>
@@ -877,6 +1021,21 @@ const NewOrder = () => {
                                                 />
                                             </span>
                                         </label>
+                                    )}
+                                    {orderType === "Delivery" && (
+                                        <div className="mt-3 border-t border-[#444] pt-3">
+                                            <p className="px-2 text-xs font-semibold text-[#d3d3d3]">Already paid before delivery</p>
+                                            <div className="mt-2 grid grid-cols-2 gap-2">
+                                                <label className="grid gap-1 px-2 text-xs text-[#ababab]">Cash paid
+                                                    <input type="number" min="0" step="0.01" value={prepaidCash} onChange={(event) => setPrepaidCash(event.target.value)} placeholder="0.00" className="field text-right" />
+                                                </label>
+                                                <label className="grid gap-1 px-2 text-xs text-[#ababab]">Online paid
+                                                    <input type="number" min="0" step="0.01" value={prepaidOnline} onChange={(event) => setPrepaidOnline(event.target.value)} placeholder="0.00" className="field text-right" />
+                                                </label>
+                                            </div>
+                                            <p className="mt-2 px-2 text-xs text-[#ababab]">Rider will collect {formatCurrency(Math.max(0, total - (toPaise(prepaidCash) + toPaise(prepaidOnline)) / 100))}</p>
+                                            {paymentError && <p role="alert" className="mt-2 px-2 text-xs text-[#f08080]">{paymentError}</p>}
+                                        </div>
                                     )}
                                 </div>
                                 </>

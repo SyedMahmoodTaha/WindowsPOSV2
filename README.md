@@ -52,7 +52,7 @@ In New Order, Favourites and Frequently Used stay pinned above other categories.
 
 Developer Mode now supports removing menu categories while moving their products to a remaining category. Global search can find any account from a cashier or manager session; selecting one signs out and still requires that account's password. New orders require an order type before Save or KOT. Inventory tracks shared ingredients and per-menu-item recipe usage; stock is received by package with a base-unit conversion and expiry date, then deducted from unexpired batches when an order is marked completed. This lets one ingredient, such as a cheese slice, be shared across multiple menu items. Inventory can be searched and filtered; archive discontinued ingredients to hide them while retaining stock and recipe history. The Inventory page's global switch can disable inventory checks and deductions for POS orders.
 
-The Home Quick Actions area is limited to New Order, Tables, Orders, and Printer Settings. Use More Settings for other options available to the signed-in role.
+The Home Quick Actions include New Order, Tables, Orders, Delivery, and Printer Settings. The mobile-first Delivery PWA, Firebase setup, rider workflow, and deployment notes are in [DAPP/README.md](./DAPP/README.md).
 
 Version 2.3.0 aligns the POS with the tested PFL source, including separate POS-user and shop-staff profiles, self-service account details and photos, Manager privacy for Admin accounts, and precise fractional-rupee order totals.
 

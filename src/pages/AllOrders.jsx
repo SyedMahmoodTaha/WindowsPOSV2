@@ -29,6 +29,7 @@ const AllOrders = () => {
     const [orders, setOrders] = useState(readOrders);
     const [search, setSearch] = useState("");
     const [viewOrder, setViewOrder] = useState(null);
+    const [reprintOrder, setReprintOrder] = useState(null);
     const completedOrders = orders.filter((order) => order.status === "completed");
     const searchTerm = search.trim().toLowerCase();
     const visibleOrders = completedOrders.filter((order) => [
@@ -86,6 +87,7 @@ const AllOrders = () => {
                                     <div className="flex flex-wrap items-center gap-2">
                                         <h2 className="font-semibold">#{order.orderNumber || order.id}</h2>
                                         <span className="rounded-full bg-[#a6f0c7] px-2 py-0.5 text-[10px] font-semibold uppercase text-[#163b28]">Completed</span>
+                                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${order.paymentStatus === "paid" ? "bg-[#a6f0c7] text-[#163b28]" : "bg-[#f08080] text-[#471515]"}`}>{order.paymentStatus === "paid" ? "Paid" : "Due"}</span>
                                     </div>
                                     <p className="mt-1 text-sm text-[#ababab]">{getOrderLocation(order)} · {formatDateTime(order.createdAt)}</p>
                                     {canViewFinancialDetails && <p className="mt-1 text-sm font-semibold">{formatCurrency(order.total)}</p>}
@@ -94,7 +96,7 @@ const AllOrders = () => {
                                     <button type="button" onClick={() => setViewOrder(order)} className="inline-flex items-center gap-2 rounded-[10px] border border-[#555] px-3 py-2 text-sm font-medium text-[#f5f5f5] transition-colors hover:bg-[#3a3a3a]" aria-label={`View order ${order.orderNumber || order.id}`}>
                                         <FaEye /> <span>View</span>
                                     </button>
-                                    {canViewFinancialDetails && <button type="button" onClick={() => printOrder(order, "cashier")} className="inline-flex items-center gap-2 rounded-[10px] bg-[#d3d3d3] px-3 py-2 text-sm font-semibold text-[#1a1a1a] transition-colors hover:bg-white" aria-label={`Reprint order ${order.orderNumber || order.id}`}>
+                                    {canViewFinancialDetails && <button type="button" onClick={() => setReprintOrder(order)} className="inline-flex items-center gap-2 rounded-[10px] bg-[#d3d3d3] px-3 py-2 text-sm font-semibold text-[#1a1a1a] transition-colors hover:bg-white" aria-label={`Reprint order ${order.orderNumber || order.id}`}>
                                         <FaPrint /> <span>Reprint</span>
                                     </button>}
                                 </div>
@@ -124,6 +126,7 @@ const AllOrders = () => {
                             {viewOrder.orderDetails?.address && <p className="flex justify-between gap-4"><span className="text-[#ababab]">Address</span><span className="text-right">{viewOrder.orderDetails.address}</span></p>}
                             {viewOrder.cashier && <p className="flex justify-between gap-4"><span className="text-[#ababab]">Cashier</span><span className="text-right">{viewOrder.cashier}</span></p>}
                         </div>
+                        <p className="flex justify-between border-b border-[#444] py-3 text-sm"><span className="text-[#ababab]">Payment status</span><strong>{viewOrder.paymentStatus === "paid" ? "Paid" : "Due"}</strong></p>
 
                         <div className="space-y-3 py-4">
                             {(viewOrder.cart || []).map((item, index) => (
@@ -143,9 +146,29 @@ const AllOrders = () => {
                             <p className="flex justify-between text-lg font-semibold"><span>Total</span><span>{formatCurrency(viewOrder.total)}</span></p>
                         </div>}
 
-                        {canViewFinancialDetails && <button type="button" onClick={() => printOrder(viewOrder, "cashier")} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-[#d3d3d3] px-4 py-3 font-semibold text-[#1a1a1a] transition-colors hover:bg-white">
+                        {canViewFinancialDetails && <button type="button" onClick={() => setReprintOrder(viewOrder)} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-[#d3d3d3] px-4 py-3 font-semibold text-[#1a1a1a] transition-colors hover:bg-white">
                             <FaPrint /> Reprint receipt
                         </button>}
+                    </section>
+                </div>
+            )}
+
+            {reprintOrder && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setReprintOrder(null); }}>
+                    <section role="dialog" aria-modal="true" aria-labelledby="all-order-reprint-title" className="w-full max-w-sm rounded-[16px] bg-[#2a2a2a] p-5 text-[#f5f5f5] shadow-2xl">
+                        <h2 id="all-order-reprint-title" className="text-xl font-semibold">Choose what to reprint</h2>
+                        <p className="mt-1 text-sm text-[#ababab]">Order #{reprintOrder.orderNumber || reprintOrder.id}</p>
+                        <div className="mt-5 grid gap-3">
+                            <button type="button" onClick={() => { void printOrder(reprintOrder, "cashier", { includeKitchenCopy: false }); setReprintOrder(null); }} className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-[#d3d3d3] px-4 py-3 font-semibold text-[#1a1a1a] transition-colors hover:bg-white">
+                                <FaPrint /> Cashier bill
+                            </button>
+                            <button type="button" onClick={() => { void printOrder(reprintOrder, "kitchen", { includeKitchenCopy: false }); setReprintOrder(null); }} className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-[#555] px-4 py-3 font-semibold text-[#f5f5f5] transition-colors hover:bg-[#3a3a3a]">
+                                <FaPrint /> KOT
+                            </button>
+                            <button type="button" onClick={() => setReprintOrder(null)} className="rounded-[10px] px-4 py-2 text-sm text-[#ababab] transition-colors hover:bg-[#3a3a3a] hover:text-[#f5f5f5]">
+                                Cancel
+                            </button>
+                        </div>
                     </section>
                 </div>
             )}

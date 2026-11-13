@@ -1,0 +1,115 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownProfile() {
+      return get(/databases/$(database)/documents/deliveryRiders/$(request.auth.uid));
+    }
+
+    function ownProfileAfter() {
+      return getAfter(/databases/$(database)/documents/deliveryRiders/$(request.auth.uid));
+    }
+
+    function isManager() {
+      return signedIn()
+        && ownProfile().data.role == 'manager'
+        && ownProfile().data.enabled != false;
+    }
+
+    function isActiveRider() {
+      return signedIn()
+        && ownProfile().data.role == 'rider'
+        && ownProfile().data.enabled != false;
+    }
+
+    match /deliveryRiders/{uid} {
+      allow read: if isManager() || (signedIn() && request.auth.uid == uid);
+      allow create, delete: if isManager();
+      allow update: if isManager()
+        || (isActiveRider()
+          && request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeenAt'])
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['lastSeenAt'])
+            || request.resource.data.lastSeenAt == null
+            || request.resource.data.lastSeenAt is timestamp
+          ));
+
+      allow update: if isActiveRider()
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activeCount', 'lastActionOrderId'])
+        && request.resource.data.lastActionOrderId is string
+        && (
+          (
+            request.resource.data.activeCount == resource.data.activeCount + 1
+            && resource.data.activeCount < 5
+            && get(/databases/$(database)/documents/deliveryOrders/$(request.resource.data.lastActionOrderId)).data.status == 'available'
+            && getAfter(/databases/$(database)/documents/deliveryOrders/$(request.resource.data.lastActionOrderId)).data.status == 'with_rider'
+            && getAfter(/databases/$(database)/documents/deliveryOrders/$(request.resource.data.lastActionOrderId)).data.riderUid == uid
+          )
+          ||
+          (
+            request.resource.data.activeCount == resource.data.activeCount - 1
+            && resource.data.activeCount > 0
+            && get(/databases/$(database)/documents/deliveryOrders/$(request.resource.data.lastActionOrderId)).data.status == 'on_way'
+            && getAfter(/databases/$(database)/documents/deliveryOrders/$(request.resource.data.lastActionOrderId)).data.status == 'delivered'
+            && getAfter(/databases/$(database)/documents/deliveryOrders/$(request.resource.data.lastActionOrderId)).data.riderUid == uid
+          )
+        );
+    }
+
+    match /deliveryOrders/{orderId} {
+      allow read: if isManager()
+        || (isActiveRider() && resource.data.status == 'available')
+        || (isActiveRider() && resource.data.riderUid == request.auth.uid);
+      allow create: if isManager()
+        && request.resource.data.status == 'available'
+        && request.resource.data.riderUid == null;
+      allow delete: if isManager();
+
+      allow update: if isManager();
+      allow update: if isActiveRider()
+        && resource.data.status == 'available'
+        && resource.data.riderUid == null
+        && request.resource.data.status == 'with_rider'
+        && request.resource.data.riderUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'riderUid', 'riderName', 'pickedUpAt', 'updatedAt'])
+        && ownProfileAfter().data.activeCount == ownProfile().data.activeCount + 1
+        && ownProfileAfter().data.activeCount <= 5
+        && ownProfileAfter().data.lastActionOrderId == orderId;
+      allow update: if isActiveRider()
+        && resource.data.riderUid == request.auth.uid
+        && resource.data.status == 'with_rider'
+        && request.resource.data.status == 'on_way'
+        && request.resource.data.riderUid == resource.data.riderUid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'onWayAt', 'updatedAt']);
+      allow update: if isActiveRider()
+        && resource.data.riderUid == request.auth.uid
+        && resource.data.status == 'on_way'
+        && request.resource.data.status == 'delivered'
+        && request.resource.data.riderUid == resource.data.riderUid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'deliveredAt', 'updatedAt', 'paymentBreakdown'])
+        && request.resource.data.paymentBreakdown.prepaidCashPaise is int
+        && request.resource.data.paymentBreakdown.prepaidOnlinePaise is int
+        && request.resource.data.paymentBreakdown.collectedCashPaise is int
+        && request.resource.data.paymentBreakdown.collectedOnlinePaise is int
+        && request.resource.data.paymentBreakdown.prepaidCashPaise >= 0
+        && request.resource.data.paymentBreakdown.prepaidOnlinePaise >= 0
+        && request.resource.data.paymentBreakdown.collectedCashPaise >= 0
+        && request.resource.data.paymentBreakdown.collectedOnlinePaise >= 0
+        && request.resource.data.totalPaise is int
+        && resource.data.get('prepaidCashPaise', 0) is int
+        && resource.data.get('prepaidOnlinePaise', 0) is int
+        && resource.data.get('prepaidCashPaise', 0) >= 0
+        && resource.data.get('prepaidOnlinePaise', 0) >= 0
+        && request.resource.data.paymentBreakdown.prepaidCashPaise == resource.data.get('prepaidCashPaise', 0)
+        && request.resource.data.paymentBreakdown.prepaidOnlinePaise == resource.data.get('prepaidOnlinePaise', 0)
+        && request.resource.data.paymentBreakdown.prepaidCashPaise + request.resource.data.paymentBreakdown.prepaidOnlinePaise + request.resource.data.paymentBreakdown.collectedCashPaise + request.resource.data.paymentBreakdown.collectedOnlinePaise == request.resource.data.totalPaise
+        && ownProfileAfter().data.activeCount == ownProfile().data.activeCount - 1
+        && ownProfileAfter().data.lastActionOrderId == orderId;
+    }
+  }
+}

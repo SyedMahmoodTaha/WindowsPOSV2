@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
+    "firebase": "^13.2.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-icons": "^5.7.0",
@@ -59,7 +60,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -74,5 +77,8 @@
       "uninstallerIcon": "build/icon.ico",
       "artifactName": "Tyep Setup ${version}.${ext}"
     }
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.13.5"
   }
 }
