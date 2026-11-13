@@ -87,6 +87,7 @@ const AllOrders = () => {
                                     <div className="flex flex-wrap items-center gap-2">
                                         <h2 className="font-semibold">#{order.orderNumber || order.id}</h2>
                                         <span className="rounded-full bg-[#a6f0c7] px-2 py-0.5 text-[10px] font-semibold uppercase text-[#163b28]">Completed</span>
+                                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${order.paymentStatus === "paid" ? "bg-[#a6f0c7] text-[#163b28]" : "bg-[#f08080] text-[#471515]"}`}>{order.paymentStatus === "paid" ? "Paid" : "Due"}</span>
                                     </div>
                                     <p className="mt-1 text-sm text-[#ababab]">{getOrderLocation(order)} · {formatDateTime(order.createdAt)}</p>
                                     {canViewFinancialDetails && <p className="mt-1 text-sm font-semibold">{formatCurrency(order.total)}</p>}
@@ -125,6 +126,7 @@ const AllOrders = () => {
                             {viewOrder.orderDetails?.address && <p className="flex justify-between gap-4"><span className="text-[#ababab]">Address</span><span className="text-right">{viewOrder.orderDetails.address}</span></p>}
                             {viewOrder.cashier && <p className="flex justify-between gap-4"><span className="text-[#ababab]">Cashier</span><span className="text-right">{viewOrder.cashier}</span></p>}
                         </div>
+                        <p className="flex justify-between border-b border-[#444] py-3 text-sm"><span className="text-[#ababab]">Payment status</span><strong>{viewOrder.paymentStatus === "paid" ? "Paid" : "Due"}</strong></p>
 
                         <div className="space-y-3 py-4">
                             {(viewOrder.cart || []).map((item, index) => (

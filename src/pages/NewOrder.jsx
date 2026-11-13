@@ -79,6 +79,10 @@ const NewOrder = () => {
     const [orderDetails, setOrderDetails] = useState({});
     const [shortcutCode, setShortcutCode] = useState("");
     const [shortcutError, setShortcutError] = useState("");
+    const [kotSearch, setKotSearch] = useState("");
+    const [orderLookupError, setOrderLookupError] = useState("");
+    const [paymentStatus, setPaymentStatus] = useState("due");
+    const [existingKotNumber, setExistingKotNumber] = useState(null);
     const [charges, setCharges] = useState(orderCharges);
     const [prepaidCash, setPrepaidCash] = useState("");
     const [prepaidOnline, setPrepaidOnline] = useState("");
@@ -188,6 +192,8 @@ const NewOrder = () => {
                 ? (existingOrder.deliveryPayment.prepaidOnlinePaise / 100).toFixed(2)
                 : "");
             setOrderNote(existingOrder.orderNote || "");
+            setPaymentStatus(existingOrder.paymentStatus === "paid" ? "paid" : "due");
+            setExistingKotNumber(existingOrder.orderNumber || existingOrder.id);
         }
 
         const selectedMenuItem = location.state?.selectedMenuItem;
@@ -353,6 +359,28 @@ const NewOrder = () => {
         setShortcutError("");
     };
 
+    const handleOrderLookup = (event) => {
+        if (event.key !== "Enter") return;
+
+        const searchValue = kotSearch.trim();
+        if (!searchValue) return;
+
+        const order = orderHistory.find((candidate) => (
+            String(candidate.orderNumber || "").toLowerCase() === searchValue.toLowerCase()
+        ));
+
+        if (!order) {
+            setOrderLookupError("KOT not found");
+            return;
+        }
+
+        setOrderLookupError("");
+        setKotSearch("");
+        navigate("/new-order", {
+            state: { from: location.state?.from || "/", existingOrder: order },
+        });
+    };
+
     const handleChargeChange = (event) => {
         const value = event.target.value;
         setCharges((currentCharges) => ({
@@ -391,6 +419,7 @@ const NewOrder = () => {
             charges,
             prepaidCash,
             prepaidOnline,
+            paymentStatus,
             total,
             orderNote,
             label: orderType || "Unassigned order",
@@ -406,9 +435,13 @@ const NewOrder = () => {
         setPrepaidCash("");
         setPrepaidOnline("");
         setPaymentError("");
+        setPaymentStatus("due");
         setDetailsOpen(false);
         setActiveHeldOrderId(null);
         setIsEditingExistingOrder(false);
+        existingOrderRef.current = null;
+        originalCartRef.current = [];
+        setExistingKotNumber(null);
     };
 
     const restoreHeldOrder = (heldOrder) => {
@@ -419,6 +452,7 @@ const NewOrder = () => {
         setCharges(heldOrder.charges);
         setPrepaidCash(heldOrder.prepaidCash || "");
         setPrepaidOnline(heldOrder.prepaidOnline || "");
+        setPaymentStatus(heldOrder.paymentStatus || "due");
         setDetailsOpen(false);
         setActiveHeldOrderId(heldOrder.id);
         setHoldDrawerOpen(false);
@@ -449,6 +483,7 @@ const NewOrder = () => {
         setOrderType("");
         setOrderDetails({});
         setOrderNote("");
+        setPaymentStatus("due");
         setCharges(orderCharges);
         setPrepaidCash("");
         setPrepaidOnline("");
@@ -456,6 +491,10 @@ const NewOrder = () => {
         setDetailsOpen(false);
         setSummaryOpen(false);
         setActiveHeldOrderId(null);
+        existingOrderRef.current = null;
+        originalCartRef.current = [];
+        setIsEditingExistingOrder(false);
+        setExistingKotNumber(null);
     };
 
     const holdCollisionOrder = () => {
@@ -539,6 +578,7 @@ const NewOrder = () => {
             subtotal,
             total,
             orderNote,
+            paymentStatus,
             status,
             destination,
             createdAt: new Date().toISOString(),
@@ -651,16 +691,45 @@ const NewOrder = () => {
                     </aside>
 
                     <section className="scrollbar-hide min-h-0 overflow-y-auto lg:pl-4">
-                        <div className="mb-4 flex items-center justify-between gap-3">
+                        <div className="mb-4">
                             <h2 className="text-xl font-semibold">Menu</h2>
-                            <input
-                                type="search"
-                                value={menuSearch}
-                                onChange={(event) => setMenuSearch(event.target.value)}
-                                placeholder="Search by name"
-                                aria-label="Search menu by name"
-                                className="min-w-0 flex-1 rounded-[10px] border border-[#444444] bg-[#1f1f1f] px-3 py-2 text-sm text-[#f5f5f5] outline-none placeholder:text-[#777777] focus:border-[#d3d3d3]"
-                            />
+                            <div className="mt-2 grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2">
+                                <input
+                                    type="search"
+                                    value={menuSearch}
+                                    onChange={(event) => setMenuSearch(event.target.value)}
+                                    placeholder="Search menu"
+                                    aria-label="Search menu by name"
+                                    className="min-w-0 rounded-[10px] border border-[#444444] bg-[#1f1f1f] px-2 py-2 text-sm text-[#f5f5f5] outline-none placeholder:text-[#777777] focus:border-[#d3d3d3]"
+                                />
+                                <input
+                                    type="search"
+                                    value={kotSearch}
+                                    onChange={(event) => {
+                                        setKotSearch(event.target.value);
+                                        setOrderLookupError("");
+                                    }}
+                                    onKeyDown={handleOrderLookup}
+                                    placeholder="KOT"
+                                    aria-label="Find order by KOT number"
+                                    className="min-w-0 rounded-[10px] border border-[#444444] bg-[#1f1f1f] px-2 py-2 text-sm text-[#f5f5f5] outline-none placeholder:text-[#777777] focus:border-[#d3d3d3]"
+                                />
+                                <input
+                                    type="text"
+                                    value={shortcutCode}
+                                    onChange={(event) => {
+                                        setShortcutCode(event.target.value);
+                                        setShortcutError("");
+                                    }}
+                                    onKeyDown={handleShortcutSubmit}
+                                    placeholder="Item code"
+                                    inputMode="numeric"
+                                    aria-label="Add item by item code"
+                                    className="min-w-0 rounded-[10px] border border-[#444444] bg-[#1f1f1f] px-2 py-2 text-sm text-[#f5f5f5] outline-none placeholder:text-[#777777] focus:border-[#d3d3d3]"
+                                />
+                            </div>
+                            {orderLookupError && <p className="mt-1 text-xs text-[#f08080]" role="alert">{orderLookupError}</p>}
+                            {shortcutError && <p className="mt-1 text-xs text-[#f08080]" role="alert">{shortcutError}</p>}
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                             {filteredItems.length === 0 && selectedCategory === "Frequently Used" && !searchTerm && (
@@ -838,7 +907,10 @@ const NewOrder = () => {
                             <div className="flex items-center justify-between border-b border-[#444444] pb-4">
                                 <div className="flex items-center gap-3">
                                     <FaShoppingCart className="text-[#d3d3d3]" />
-                                    <h2 className="text-xl font-semibold">Current Order</h2>
+                                    <div>
+                                        <h2 className="text-xl font-semibold">Current Order</h2>
+                                        {isEditingExistingOrder && <p className="text-xs text-[#ababab]">KOT {existingKotNumber || "-"}</p>}
+                                    </div>
                                 </div>
                                 <div className="text-right">
                                     <div className="flex items-center gap-2">
@@ -848,20 +920,7 @@ const NewOrder = () => {
                                         <button type="button" onClick={clearOrder} disabled={cart.length === 0} className="flex size-8 items-center justify-center rounded-[10px] border border-[#444444] text-[#ababab] transition-colors hover:border-[#f08080] hover:bg-[#f08080] hover:text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-40" aria-label="Clear current order" title="Clear current order">
                                             <FaTrashCan className="size-4" />
                                         </button>
-                                        <input
-                                            value={shortcutCode}
-                                            onChange={(event) => {
-                                                setShortcutCode(event.target.value);
-                                                setShortcutError("");
-                                            }}
-                                            onKeyDown={handleShortcutSubmit}
-                                            placeholder="Code"
-                                            inputMode="numeric"
-                                            aria-label="Add item by shortcut code"
-                                            className="w-16 rounded-[10px] border border-[#444444] bg-[#1f1f1f] px-2 py-1 text-center text-sm text-[#f5f5f5] outline-none placeholder:text-[#777777] focus:border-[#d3d3d3]"
-                                        />
                                     </div>
-                                    {shortcutError && <p className="mt-1 text-[10px] text-[#f08080]">{shortcutError}</p>}
                                 </div>
                             </div>
 
@@ -973,6 +1032,18 @@ const NewOrder = () => {
                                 <div className="mb-2 mt-2 flex items-center justify-between text-base font-semibold">
                                     <span>Total</span>
                                     <span>{formatCurrency(total)}</span>
+                                </div>
+                                <div className="mb-2 flex items-center justify-between gap-3 rounded-[10px] bg-[#1f1f1f] px-3 py-2">
+                                    <span className="text-sm font-medium text-[#ababab]">Payment status</span>
+                                    <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={paymentStatus === "paid"}
+                                        onClick={() => setPaymentStatus((currentStatus) => currentStatus === "paid" ? "due" : "paid")}
+                                        className={`min-w-20 rounded-full px-4 py-1.5 text-sm font-bold text-white transition-colors ${paymentStatus === "paid" ? "bg-[#38a169]" : "bg-[#e53e3e]"}`}
+                                    >
+                                        {paymentStatus === "paid" ? "Paid" : "Due"}
+                                    </button>
                                 </div>
                                 <div className="grid grid-cols-6 gap-1">
                                     <button type="button" onClick={() => completeOrder("saved")} disabled={!orderType || (cart.length === 0 && !isEditingExistingOrder)} className="col-span-2 rounded-[10px] bg-[#d3d3d3] px-1 py-1 text-xs font-semibold text-[#1a1a1a] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">Save</button>

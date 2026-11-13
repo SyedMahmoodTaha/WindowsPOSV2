@@ -291,6 +291,9 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
     const labels = { ...DEFAULT_FIELD_LABELS, ...(template.fieldLabels || {}) };
     const isKitchenPrint = destination === "kitchen";
     const isKotLayout = template.layout === "kot";
+    const paymentStatusMarkup = isKitchenPrint
+        ? `<div class="payment-status"><span>Payment Status</span><strong>${order.paymentStatus === "paid" ? "Paid" : "Due"}</strong></div>`
+        : "";
     const title = isKotLayout ? "" : (template.titleText || (isKitchenPrint ? "Kitchen KOT" : ""));
     if (isKotLayout) {
         options.logo = false;
@@ -396,6 +399,7 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
             .meta-row { display: flex; justify-content: space-between; gap: 2mm; padding: 1mm 0; }
             .meta-row > * { min-width: 0; }
             .meta-row strong { text-align: right; }
+            .payment-status { display: flex; justify-content: space-between; gap: 2mm; margin-top: 1mm; border-top: 1px solid #777; padding-top: 1mm; }
             .items { width: 100%; margin-top: 1mm; border-collapse: collapse; table-layout: fixed; }
             .items thead { border-top: 1px solid #777; }
             .items th, .items td { min-width: 0; padding: 1mm 0.5mm; text-align: left; vertical-align: top; }
@@ -411,7 +415,7 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
             .grand-total { display: flex; justify-content: space-between; gap: 2mm; border-top: 1px solid #777; margin-top: 1mm; padding: 1.5mm 0; font-size: ${cashierTotalSize}px; }
             footer { margin-top: 2mm; text-align: center; font-size: 9px; line-height: 1.3; }
             @media print { body { margin: 0; } }
-        </style></head><body>${logoMarkup}${options.businessName ? `<div class="header-phone">${escapeHtml(template.headerPhoneNumber || "9611648843")}</div>${businessDetailsMarkup}` : ""}${customerMarkup}${dateTypeMarkup}${cashierBillMarkup}${options.items ? `<table class="items"><thead><tr><th>Item</th><th class="numeric">Qty.</th><th class="numeric">Price</th><th class="numeric">Amount</th></tr></thead><tbody>${itemRows}</tbody></table>` : ""}${totalsMarkup}${footerMarkup}</body></html>`;
+        </style></head><body>${logoMarkup}${options.businessName ? `<div class="header-phone">${escapeHtml(template.headerPhoneNumber || "9611648843")}</div>${businessDetailsMarkup}` : ""}${customerMarkup}${dateTypeMarkup}${cashierBillMarkup}${options.items ? `<table class="items"><thead><tr><th>Item</th><th class="numeric">Qty.</th><th class="numeric">Price</th><th class="numeric">Amount</th></tr></thead><tbody>${itemRows}</tbody></table>` : ""}${totalsMarkup}${paymentStatusMarkup}${footerMarkup}</body></html>`;
     }
     const fieldMarkup = {
         items: `<table><thead><tr><th>${escapeHtml(labels.item)}</th><th>${escapeHtml(labels.quantity)}</th>${options.itemPrice ? `<th>${escapeHtml(labels.itemPrice)}</th>` : ""}</tr></thead><tbody>${items}</tbody></table>`,
@@ -541,6 +545,7 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         p { margin: 4px 0; color: #000; }
         .row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; min-width: 0; font-size: ${fontSize}px; color: #000; font-weight: 700; margin: ${rowSpacing}px 0; }
         .meta-box { margin: ${rowSpacing}px 0; }
+        .payment-status { display: flex; justify-content: space-between; gap: 8px; border-top: 1px dashed #000; margin-top: 8px; padding-top: 6px; color: #000; }
         .meta-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 2px 8px; min-width: 0; margin: ${rowSpacing}px 0; font-size: ${fontSize}px; color: #000; }
         .meta-row span { color: #000; min-width: 0; max-width: 100%; font-weight: 700; overflow-wrap: anywhere; }
         .meta-row strong { text-align: right; flex: 1 1 auto; min-width: 0; max-width: 100%; font-weight: 700; word-break: break-word; overflow-wrap: anywhere; color: #000; }
@@ -561,7 +566,7 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         .custom-logo { display: block; max-width: 100%; max-height: 30mm; margin: 0 auto; object-fit: contain; }
         .custom-placeholder { color: #777; font-size: 10px; font-weight: 400; }
         @media print { body { margin: 0; } }
-    </style></head><body class="${isKotLayout ? "kot-layout" : ""}">${template.layout === "custom" ? customElements : `${!isKotLayout && (options.logo || options.businessName) ? `<div class="header">${options.logo ? `<div class="logo-box"><img src="${escapeHtml(logoSrc)}" alt="Logo" /></div>` : ""}${options.businessName ? `<div class="brand">${escapeHtml(template.headerPhoneNumber || template.businessName || "Lassi Shop")}</div>` : ""}</div>` : ""}${!isKotLayout && template.headerText ? `<p class="footer">${escapeHtml(template.headerText)}</p>` : ""}${title ? `<div class="header-line"><h1>${title}</h1></div>` : ""}<div class="meta-box">${bodyMarkup}</div>`}</body></html>`;
+    </style></head><body class="${isKotLayout ? "kot-layout" : ""}">${template.layout === "custom" ? customElements : `${!isKotLayout && (options.logo || options.businessName) ? `<div class="header">${options.logo ? `<div class="logo-box"><img src="${escapeHtml(logoSrc)}" alt="Logo" /></div>` : ""}${options.businessName ? `<div class="brand">${escapeHtml(template.headerPhoneNumber || template.businessName || "Lassi Shop")}</div>` : ""}</div>` : ""}${!isKotLayout && template.headerText ? `<p class="footer">${escapeHtml(template.headerText)}</p>` : ""}${title ? `<div class="header-line"><h1>${title}</h1></div>` : ""}<div class="meta-box">${bodyMarkup}</div>`}${paymentStatusMarkup}</body></html>`;
 };
 
 const printSingleOrder = async (order, destination, selectedTemplate) => {
