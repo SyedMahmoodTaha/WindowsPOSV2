@@ -9,7 +9,7 @@ import {
     observeProfile,
     signIn,
     signOutRider,
-    updateLocation,
+    updateRiderPresence,
 } from "./firebase";
 
 const formatDate = (value) => {
@@ -63,7 +63,6 @@ const makePreviewOrders = () => [
 const PreviewApp = ({ onExit }) => {
     const [orders, setOrders] = useState(makePreviewOrders);
     const [orderTab, setOrderTab] = useState("picked-up");
-    const [sharing, setSharing] = useState(false);
     const [paymentDrafts, setPaymentDrafts] = useState({ "1043": { cash: "220", online: "100" } });
     const [notice, setNotice] = useState("");
     const activeOrders = orders.filter((order) => order.riderUid === "ayaan" && ["with_rider", "on_way"].includes(order.status));
@@ -143,7 +142,6 @@ const PreviewApp = ({ onExit }) => {
     const resetDemo = () => {
         setOrders(makePreviewOrders());
         setPaymentDrafts({ "1043": { cash: "220", online: "100" } });
-        setSharing(false);
         setNotice("Demo reset. Explore the picked-up and available-order tabs.");
     };
 
@@ -227,9 +225,6 @@ const PreviewApp = ({ onExit }) => {
             {notice && <p className="notice demo-notice" role="status">{notice}</p>}
 
             <div className="preview-content rider-demo">
-                <button type="button" className={`location-button ${sharing ? "sharing" : ""}`} onClick={() => { setSharing((current) => !current); setNotice(sharing ? "Sample location sharing stopped." : "Sample live location is on. Real GPS is never used in this preview."); }}>
-                    <span className="pulse" />{sharing ? "Sharing sample location · tap to stop" : "Share live location (sample)"}
-                </button>
                 {orderTab === "picked-up" ? (
                     <section className="section">
                         <div className="section-heading"><div><h2>Picked-up orders</h2><p className="section-caption">Your assigned deliveries · claims cannot be undone</p></div><span>{activeOrders.length}</span></div>
@@ -267,13 +262,21 @@ const DeliveryApp = () => {
     const [error, setError] = useState("");
     const [notice, setNotice] = useState("");
     const [busyId, setBusyId] = useState("");
-    const [sharing, setSharing] = useState(false);
     const [busy, setBusy] = useState(false);
     const [paymentDrafts, setPaymentDrafts] = useState({});
+    const [activeTab, setActiveTab] = useState("picked-up");
+    const [newOrderAlert, setNewOrderAlert] = useState(null);
     const [showPreview, setShowPreview] = useState(false);
-    const watchId = useRef(null);
-    const lastSentAt = useRef(0);
+    const seenAvailableOrderIds = useRef(null);
+    const alertedOrderIds = useRef(new Set());
     const activeCount = Number(profile?.activeCount) || 0;
+
+    const showNewOrderAlert = (alert) => {
+        if (!alert?.orderId || alertedOrderIds.current.has(alert.orderId)) return;
+        alertedOrderIds.current.add(alert.orderId);
+        setNewOrderAlert(alert);
+        setActiveTab("available");
+    };
 
     useEffect(() => observeAuth((nextUser) => {
         setUser(nextUser);
@@ -281,61 +284,66 @@ const DeliveryApp = () => {
         setProfileLoaded(false);
         setAvailable([]);
         setAssigned([]);
-        setSharing(false);
+        setNewOrderAlert(null);
+        seenAvailableOrderIds.current = null;
+        alertedOrderIds.current.clear();
     }), []);
 
     useEffect(() => {
         if (!user) return undefined;
-        const fail = (reason) => setError(`Could not load deliveries: ${reason.message}`);
         const stopProfile = observeProfile(user.uid, (nextProfile) => {
             setProfile(nextProfile);
             setProfileLoaded(true);
-            if ((Number(nextProfile?.activeCount) || 0) < 1) setSharing(false);
-        }, fail);
-        const stopAvailable = observeAvailable(setAvailable, fail);
-        const stopAssigned = observeAssigned(user.uid, setAssigned, fail);
-        return () => {
-            stopProfile();
-            stopAvailable();
-            stopAssigned();
-        };
+            if (nextProfile?.enabled === false) {
+                setAvailable([]);
+                setAssigned([]);
+            }
+        }, (reason) => setError(`Could not load rider account: ${reason.message}`));
+        return stopProfile;
     }, [user]);
 
     useEffect(() => {
-        if (!sharing || activeCount < 1 || !navigator.geolocation) {
-            if (watchId.current !== null) navigator.geolocation?.clearWatch(watchId.current);
-            watchId.current = null;
-            return undefined;
-        }
-        watchId.current = navigator.geolocation.watchPosition((position) => {
-            const now = Date.now();
-            if (now - lastSentAt.current < 30000) return;
-            lastSentAt.current = now;
-            void updateLocation(position).catch((reason) => setError(`Could not share location: ${reason.message}`));
-        }, (reason) => {
-            setError(`Location sharing stopped: ${reason.message}`);
-            setSharing(false);
-            void updateLocation(null).catch((updateError) => setError(`Could not clear shared location: ${updateError.message}`));
-        }, { enableHighAccuracy: true, maximumAge: 15000, timeout: 15000 });
+        if (!user || profile?.role !== "rider" || profile.enabled === false) return undefined;
+        const fail = (reason) => setError(`Could not load deliveries: ${reason.message}`);
+        const stopAvailable = observeAvailable((nextAvailable) => {
+            setAvailable(nextAvailable);
+            const nextIds = new Set(nextAvailable.map((order) => order.id));
+            if (seenAvailableOrderIds.current === null) {
+                seenAvailableOrderIds.current = nextIds;
+                return;
+            }
+            const newlyAvailable = nextAvailable.filter((order) => !seenAvailableOrderIds.current.has(order.id));
+            for (const order of nextAvailable) seenAvailableOrderIds.current.add(order.id);
+            const newest = newlyAvailable[0];
+            if (newest) {
+                showNewOrderAlert({
+                    orderId: newest.id,
+                    orderNumber: newest.orderNumber || newest.id,
+                    body: `New delivery available · ${moneyText(getBalanceDuePaise(newest))} to collect`,
+                });
+            }
+        }, fail);
+        const stopAssigned = observeAssigned(user.uid, setAssigned, fail);
         return () => {
-            if (watchId.current !== null) navigator.geolocation?.clearWatch(watchId.current);
-            watchId.current = null;
+            stopAvailable();
+            stopAssigned();
         };
-    }, [sharing, activeCount]);
+    }, [user, profile?.role, profile?.enabled]);
 
     useEffect(() => {
-        const stopSharingWhenHidden = (event) => {
-            if ((!document.hidden && event.type !== "pagehide") || !sharing) return;
-            setSharing(false);
-            void updateLocation(null).catch((reason) => setError(`Could not stop location sharing: ${reason.message}`));
+        if (!user || profile?.role !== "rider" || profile.enabled === false) return undefined;
+        const updatePresence = () => {
+            if (document.visibilityState !== "visible") return;
+            void updateRiderPresence().catch((reason) => setError(`Could not update online status: ${reason.message}`));
         };
-        document.addEventListener("visibilitychange", stopSharingWhenHidden);
-        window.addEventListener("pagehide", stopSharingWhenHidden);
+        updatePresence();
+        const timer = window.setInterval(updatePresence, 30000);
+        document.addEventListener("visibilitychange", updatePresence);
         return () => {
-            document.removeEventListener("visibilitychange", stopSharingWhenHidden);
-            window.removeEventListener("pagehide", stopSharingWhenHidden);
+            window.clearInterval(timer);
+            document.removeEventListener("visibilitychange", updatePresence);
         };
-    }, [sharing]);
+    }, [user, profile?.role, profile?.enabled]);
 
     const handleLogin = async (event) => {
         event.preventDefault();
@@ -346,6 +354,18 @@ const DeliveryApp = () => {
             setPassword("");
         } catch (reason) {
             setError(reason.message);
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const handleSignOut = async () => {
+        setBusy(true);
+        setError("");
+        try {
+            await signOutRider();
+        } catch (reason) {
+            setError(`Could not sign out cleanly: ${reason.message}`);
         } finally {
             setBusy(false);
         }
@@ -382,26 +402,6 @@ const DeliveryApp = () => {
             return;
         }
         void doAction(order.id, () => advanceOrder(order, { cashPaise, onlinePaise }));
-    };
-
-    const toggleLocation = async () => {
-        setError("");
-        if (sharing) {
-            setSharing(false);
-            try {
-                await updateLocation(null);
-                setNotice("Location sharing stopped.");
-            } catch (reason) {
-                setError(`Could not stop location sharing: ${reason.message}`);
-            }
-            return;
-        }
-        if (!navigator.geolocation) {
-            setError("This device or browser does not support location sharing.");
-            return;
-        }
-        setSharing(true);
-        setNotice("Location sharing starts after you allow location access.");
     };
 
     if (!isConfigured) {
@@ -441,76 +441,106 @@ const DeliveryApp = () => {
 
     const statusLabel = { with_rider: "Picked up", on_way: "On the way" };
     const nextLabel = { with_rider: "Start delivery", on_way: "Mark delivered" };
+    const ordersOnTheWay = assigned.filter((order) => order.status === "on_way").length;
+
+    const renderRiderOrder = (order, isAvailable = false) => {
+        const due = getBalanceDuePaise(order);
+        return (
+            <article className="order-card rider-order-card" key={order.id}>
+                <div className="order-heading">
+                    <strong>Order #{order.orderNumber || order.id}</strong>
+                    <span className={`status ${isAvailable ? "status-available" : `status-${order.status}`}`}>
+                        {isAvailable ? "Available" : statusLabel[order.status] || order.status}
+                    </span>
+                </div>
+                <p className="customer">{order.customerName || "Customer"}{order.phone && <> · <a href={`tel:${order.phone}`}>{order.phone}</a></>}</p>
+                <p className="address">{order.address || "No delivery address"}</p>
+                {order.address && <a className="directions" href={getDirectionsUrl(order.address)} target="_blank" rel="noreferrer">Open directions ↗</a>}
+                <ul>{(order.items || []).map((item, index) => <li key={`${item.name}-${index}`}>{item.quantity} × {item.name}{item.note ? ` · ${item.note}` : ""}</li>)}</ul>
+                <div className="order-footer">
+                    <span>Total {moneyText(order.totalPaise ?? Math.round((Number(order.total) || 0) * 100))}</span>
+                    <span>{order.orderNote || formatDate(order.pickedUpAt)}</span>
+                </div>
+                <p className={`balance-due ${due === 0 ? "paid" : ""}`}>
+                    {due === 0 ? "PAID · collect nothing" : `Collect ${moneyText(due)}`}
+                    {!isAvailable && <> · prepaid {moneyText(order.prepaidCashPaise || 0)} cash + {moneyText(order.prepaidOnlinePaise || 0)} online</>}
+                    {isAvailable && due > 0 && <> · already paid {moneyText((Number(order.prepaidCashPaise) || 0) + (Number(order.prepaidOnlinePaise) || 0))}</>}
+                </p>
+                {order.lastAmendment && <AmendmentNotice amendment={order.lastAmendment} />}
+                {!isAvailable && order.status === "on_way" && due > 0 && (
+                    <div className="payment-fields">
+                        <p>Collect remaining {moneyText(due)}</p>
+                        <label>Cash<input inputMode="decimal" type="number" min="0" step="0.01" value={paymentDrafts[order.id]?.cash || ""} onChange={(event) => updatePaymentDraft(order.id, "cash", event.target.value)} /></label>
+                        <label>Online<input inputMode="decimal" type="number" min="0" step="0.01" value={paymentDrafts[order.id]?.online || ""} onChange={(event) => updatePaymentDraft(order.id, "online", event.target.value)} /></label>
+                    </div>
+                )}
+                {isAvailable ? (
+                    <>
+                        <button className="primary" disabled={busyId === order.id || activeCount >= 5 || profile.enabled === false} onClick={() => void doAction(order.id, () => claimOrder(order.id))}>
+                            {busyId === order.id ? "Claiming..." : activeCount >= 5 ? "5-order limit reached" : "Pick up this order"}
+                        </button>
+                        <p className="irreversible">First rider to confirm gets this order. Pickup cannot be undone.</p>
+                    </>
+                ) : (
+                    <button className="primary" disabled={busyId === order.id || profile.enabled === false} onClick={() => order.status === "on_way" ? completeDelivery(order) : void doAction(order.id, () => advanceOrder(order))}>
+                        {busyId === order.id ? "Updating..." : nextLabel[order.status] || "Update status"}
+                    </button>
+                )}
+            </article>
+        );
+    };
 
     return (
-        <main className="shell">
-            <header className="topbar">
-                <div><p className="eyebrow">Tyep Delivery</p><h1>Hello, {profile.name || "Rider"}</h1><p className="muted">{profile.area || "Your delivery area"} · {activeCount}/5 active orders</p></div>
-                <button className="icon-button" aria-label="Sign out" onClick={() => { setSharing(false); void signOutRider(); }}>↪</button>
+        <main className="shell rider-app-shell">
+            <header className="topbar rider-topbar">
+                <div className="rider-brand"><span className="rider-brand-mark">T</span><div><p className="eyebrow">TYEP DELIVERY</p><h1>{profile.name || "Rider"}</h1><p className="muted">{profile.area || "Your delivery area"} · signed in</p></div></div>
+                <button className="icon-button" aria-label="Sign out" onClick={() => void handleSignOut()}>↪</button>
             </header>
 
             {error && <p className="alert" role="alert">{error}</p>}
             {notice && <p className="notice" role="status">{notice}</p>}
             {profile.enabled === false && <p className="alert">Your rider account is disabled. Please contact your manager.</p>}
-
-            {activeCount > 0 && profile.enabled !== false && (
-                <button type="button" className={`location-button ${sharing ? "sharing" : ""}`} onClick={() => void toggleLocation()}>
-                    <span className="pulse" />{sharing ? "Live location sharing · tap to stop" : "Share live location for active deliveries"}
-                </button>
+            {newOrderAlert && (
+                <aside className="incoming-alert" role="status">
+                    <span className="incoming-alert-icon">↗</span>
+                    <div><strong>New order available · #{newOrderAlert.orderNumber}</strong><p>{newOrderAlert.body}</p></div>
+                    <button type="button" aria-label="Dismiss new order alert" onClick={() => setNewOrderAlert(null)}>×</button>
+                </aside>
             )}
 
-            <section className="section">
-                <div className="section-heading"><h2>Your deliveries</h2><span>{assigned.length}</span></div>
-                {assigned.length === 0 ? <p className="empty">No active deliveries. Pick an order when you are ready.</p> : assigned.map((order) => (
-                    <article className="order-card" key={order.id}>
-                        <div className="order-heading"><strong>#{order.orderNumber || order.id}</strong><span className="status">{statusLabel[order.status] || order.status}</span></div>
-                        <p className="customer">{order.customerName || "Customer"}{order.phone && <> · <a href={`tel:${order.phone}`}>{order.phone}</a></>}</p>
-                        <p className="address">{order.address || "No delivery address"}</p>
-                        {order.address && <a className="directions" href={getDirectionsUrl(order.address)} target="_blank" rel="noreferrer">Open directions ↗</a>}
-                        <ul>{(order.items || []).map((item, index) => <li key={`${item.name}-${index}`}>{item.quantity} × {item.name}{item.note ? ` · ${item.note}` : ""}</li>)}</ul>
-                        <div className="order-footer"><span>Total {moneyText(order.totalPaise ?? Math.round((Number(order.total) || 0) * 100))}</span><span>{formatDate(order.pickedUpAt)}</span></div>
-                        <p className={`balance-due ${getBalanceDuePaise(order) === 0 ? "paid" : ""}`}>
-                            {getBalanceDuePaise(order) === 0 ? "PAID · collect nothing" : `Collect ${moneyText(getBalanceDuePaise(order))}`}
-                            {" · prepaid: "}
-                            {moneyText(order.prepaidCashPaise || 0)} cash + {moneyText(order.prepaidOnlinePaise || 0)} online
-                        </p>
-                        {order.lastAmendment && <AmendmentNotice amendment={order.lastAmendment} />}
-                        {order.status === "on_way" && (
-                            getBalanceDuePaise(order) > 0
-                                ? <div className="payment-fields">
-                                    <p>Collect remaining {moneyText(getBalanceDuePaise(order))}</p>
-                                    <label>Cash<input inputMode="decimal" type="number" min="0" step="0.01" value={paymentDrafts[order.id]?.cash || ""} onChange={(event) => updatePaymentDraft(order.id, "cash", event.target.value)} /></label>
-                                    <label>Online<input inputMode="decimal" type="number" min="0" step="0.01" value={paymentDrafts[order.id]?.online || ""} onChange={(event) => updatePaymentDraft(order.id, "online", event.target.value)} /></label>
-                                </div>
-                                : <p className="fully-paid">This order is fully paid. No payment collection needed.</p>
-                        )}
-                        <button className="primary" disabled={busyId === order.id || profile.enabled === false} onClick={() => order.status === "on_way" ? completeDelivery(order) : void doAction(order.id, () => advanceOrder(order))}>{busyId === order.id ? "Updating..." : nextLabel[order.status] || "Update status"}</button>
-                    </article>
-                ))}
+            <section className="rider-overview">
+                <div className="overview-copy"><p className="eyebrow">YOUR SHIFT AT A GLANCE</p><h2>Ready for your next delivery?</h2><p>Choose orders that fit your route. Pickups are first come, first served.</p></div>
+                <div className="capacity"><strong>{activeCount}<span>/5</span></strong><small>active orders</small></div>
             </section>
 
-            <section className="section">
-                <div className="section-heading"><h2>Available orders</h2><span>{available.length}</span></div>
-                {activeCount >= 5 && <p className="empty">You have reached the five active order limit. Mark one delivered to pick another.</p>}
-                {available.length === 0 ? <p className="empty">No unclaimed delivery orders right now.</p> : available.map((order) => (
-                    <article className="order-card" key={order.id}>
-                        <div className="order-heading"><strong>#{order.orderNumber || order.id}</strong><span className="status">Available</span></div>
-                        <p className="customer">{order.customerName || "Customer"}{order.phone && <> · <a href={`tel:${order.phone}`}>{order.phone}</a></>}</p>
-                        <p className="address">{order.address || "No delivery address"}</p>
-                        {order.address && <a className="directions" href={getDirectionsUrl(order.address)} target="_blank" rel="noreferrer">Open directions ↗</a>}
-                        <ul>{(order.items || []).map((item, index) => <li key={`${item.name}-${index}`}>{item.quantity} × {item.name}{item.note ? ` · ${item.note}` : ""}</li>)}</ul>
-                        <div className="order-footer"><span>Total {moneyText(order.totalPaise ?? Math.round((Number(order.total) || 0) * 100))}</span><span>{order.orderNote || ""}</span></div>
-                        <p className={`balance-due ${getBalanceDuePaise(order) === 0 ? "paid" : ""}`}>
-                            {getBalanceDuePaise(order) === 0
-                                ? "PAID · collect nothing"
-                                : `Collect ${moneyText(getBalanceDuePaise(order))} · ${moneyText(order.prepaidCashPaise || 0)} cash + ${moneyText(order.prepaidOnlinePaise || 0)} online prepaid`}
-                        </p>
-                        <button className="primary" disabled={busyId === order.id || activeCount >= 5 || profile.enabled === false} onClick={() => void doAction(order.id, () => claimOrder(order.id))}>{busyId === order.id ? "Claiming..." : "Pick up this order"}</button>
-                        <p className="irreversible">Picking up assigns this order to you and cannot be undone.</p>
-                    </article>
-                ))}
+            <section className="rider-stats" aria-label="Delivery summary">
+                <article><span>Your deliveries</span><strong>{activeCount}</strong><small>Orders picked up</small></article>
+                <article><span>Available orders</span><strong>{available.length}</strong><small>Waiting for a rider</small></article>
+                <article><span>On the way</span><strong>{ordersOnTheWay}</strong><small>In transit now</small></article>
             </section>
-            <footer className="footnote">Orders update when you are online. Keep this app open for live location sharing.</footer>
+            <p className="footnote alert-availability">New-order alerts appear here while the app is open and connected.</p>
+
+            <nav className="rider-tabs" aria-label="Delivery orders">
+                <button type="button" className={activeTab === "picked-up" ? "selected" : ""} aria-pressed={activeTab === "picked-up"} onClick={() => setActiveTab("picked-up")}>
+                    <span>Your deliveries</span><b>{assigned.length}</b>
+                </button>
+                <button type="button" className={activeTab === "available" ? "selected" : ""} aria-pressed={activeTab === "available"} onClick={() => { setActiveTab("available"); setNewOrderAlert(null); }}>
+                    <span>Available orders</span><b>{available.length}</b>
+                </button>
+            </nav>
+
+            {activeTab === "picked-up" ? (
+                <section className="section rider-order-section">
+                    <div className="section-heading"><div><h2>Your deliveries</h2><p className="section-caption">Move each order forward as you deliver it.</p></div><span>{assigned.length}</span></div>
+                    {assigned.length === 0 ? <p className="empty">No picked-up orders yet. Check Available orders when you are ready.</p> : <div className="live-order-list">{assigned.map((order) => renderRiderOrder(order))}</div>}
+                </section>
+            ) : (
+                <section className="section rider-order-section">
+                    <div className="section-heading"><div><h2>Available orders</h2><p className="section-caption">Choose an order when it suits your area and route.</p></div><span>{available.length}</span></div>
+                    {activeCount >= 5 && <p className="empty limit-notice">You have reached the five-order limit. Mark one delivered before picking up another.</p>}
+                    {available.length === 0 ? <p className="empty">No unclaimed orders right now. New orders will appear here automatically.</p> : <div className="live-order-list">{available.map((order) => renderRiderOrder(order, true))}</div>}
+                </section>
+            )}
         </main>
     );
 };

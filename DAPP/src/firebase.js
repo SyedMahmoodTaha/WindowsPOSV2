@@ -23,7 +23,6 @@ const config = {
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
     appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
-
 export const isConfigured = Object.values(config).every(Boolean);
 const app = isConfigured
     ? getApps().find((candidate) => candidate.name === "tyep-delivery")
@@ -164,7 +163,6 @@ export const advanceOrder = async (order, paymentBreakdown) => {
             transaction.update(profileRef, {
                 activeCount,
                 lastActionOrderId: String(order.id),
-                ...(activeCount === 0 ? { lastLocation: null } : {}),
             });
         } else {
             throw new Error("Delivery status cannot move backward.");
@@ -172,16 +170,11 @@ export const advanceOrder = async (order, paymentBreakdown) => {
     });
 };
 
-export const updateLocation = async (position) => {
+export const updateRiderPresence = async () => {
     const { auth: firebaseAuth, db: firestore } = requireCloud();
     const user = firebaseAuth.currentUser;
-    if (!user) throw new Error("Sign in before sharing location.");
+    if (!user) throw new Error("Sign in before updating rider presence.");
     await updateDoc(doc(firestore, "deliveryRiders", user.uid), {
-        lastLocation: position ? {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            updatedAt: serverTimestamp(),
-        } : null,
+        lastSeenAt: serverTimestamp(),
     });
 };

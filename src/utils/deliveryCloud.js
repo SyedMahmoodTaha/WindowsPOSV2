@@ -1,5 +1,14 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import {
+    createUserWithEmailAndPassword,
+    deleteUser,
+    getAuth,
+    inMemoryPersistence,
+    initializeAuth,
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    signOut,
+} from "firebase/auth";
 import {
     collection,
     doc,
@@ -8,7 +17,7 @@ import {
     onSnapshot,
     runTransaction,
     serverTimestamp,
-    updateDoc,
+    setDoc,
 } from "firebase/firestore";
 
 const config = {
@@ -22,8 +31,22 @@ export const isDeliveryCloudConfigured = Object.values(config).every(Boolean);
 const app = isDeliveryCloudConfigured
     ? getApps().find((candidate) => candidate.name === "tyep-delivery") || initializeApp(config, "tyep-delivery")
     : null;
+const riderAccountApp = isDeliveryCloudConfigured
+    ? getApps().find((candidate) => candidate.name === "tyep-rider-account-creator")
+        || initializeApp(config, "tyep-rider-account-creator")
+    : null;
 export const deliveryAuth = app ? getAuth(app) : null;
 const db = app ? getFirestore(app) : null;
+
+const getRiderAccountAuth = () => {
+    if (!riderAccountApp) throw new Error("Delivery cloud is not configured.");
+    try {
+        return initializeAuth(riderAccountApp, { persistence: inMemoryPersistence });
+    } catch (error) {
+        if (error.code !== "auth/already-initialized") throw error;
+        return getAuth(riderAccountApp);
+    }
+};
 
 const requireCloud = () => {
     if (!db || !deliveryAuth) {
@@ -47,6 +70,85 @@ export const signInDeliveryManager = async (email, password) => {
 
 export const signOutDeliveryManager = async () => {
     if (deliveryAuth?.currentUser) await signOut(deliveryAuth);
+};
+
+const requireDeliveryManager = async (firestore, auth) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Sign in with the delivery-manager account first.");
+    const snapshot = await getDoc(doc(firestore, "deliveryRiders", user.uid));
+    if (!snapshot.exists() || snapshot.data().role !== "manager" || snapshot.data().enabled === false) {
+        throw new Error("Only an enabled delivery manager can manage rider accounts.");
+    }
+};
+
+export const createDeliveryRider = async ({ name, email, password, phone, area }) => {
+    const { auth, db: firestore } = requireCloud();
+    await requireDeliveryManager(firestore, auth);
+
+    const accountAuth = getRiderAccountAuth();
+    if (accountAuth.currentUser) await signOut(accountAuth);
+    const normalizedEmail = email.trim();
+    const credential = await createUserWithEmailAndPassword(accountAuth, normalizedEmail, password);
+    const profileRef = doc(firestore, "deliveryRiders", credential.user.uid);
+    let profileError;
+    let rollbackError;
+
+    try {
+        await setDoc(profileRef, {
+            role: "rider",
+            name: name.trim(),
+            email: normalizedEmail,
+            phone: phone.trim(),
+            area: area.trim(),
+            enabled: true,
+            activeCount: 0,
+        });
+    } catch (error) {
+        profileError = error;
+        try {
+            await deleteUser(credential.user);
+        } catch (cleanupError) {
+            rollbackError = cleanupError;
+        }
+    }
+
+    let signOutError;
+    try {
+        if (accountAuth.currentUser) await signOut(accountAuth);
+    } catch (error) {
+        signOutError = error;
+    }
+
+    if (profileError) {
+        if (rollbackError || signOutError) {
+            throw new Error(
+                `Could not save the rider profile: ${profileError.message}. `
+                + `Firebase account UID ${credential.user.uid} may need cleanup. `
+                + [rollbackError?.message, signOutError?.message].filter(Boolean).join(" "),
+            );
+        }
+        throw profileError;
+    }
+    if (signOutError) {
+        throw new Error(`Rider was created (UID ${credential.user.uid}), but the temporary account session could not be closed: ${signOutError.message}`);
+    }
+    return credential.user.uid;
+};
+
+export const setDeliveryRiderEnabled = async (uid, enabled) => {
+    const { auth, db: firestore } = requireCloud();
+    await requireDeliveryManager(firestore, auth);
+    const profileRef = riderRef(uid);
+    await runTransaction(firestore, async (transaction) => {
+        const snapshot = await transaction.get(profileRef);
+        if (!snapshot.exists() || snapshot.data().role !== "rider") {
+            throw new Error("This rider profile no longer exists.");
+        }
+        if (!enabled && (Number(snapshot.data().activeCount) || 0) > 0) {
+            throw new Error("This rider still has active deliveries. Complete them before removing access.");
+        }
+        transaction.update(profileRef, { enabled });
+    });
 };
 
 export const listenDeliveryManager = (callback) => {
@@ -224,15 +326,4 @@ export const subscribeDeliveryRiders = (callback, onError) => {
             .filter((entry) => entry.data().role === "rider")
             .map((entry) => ({ uid: entry.id, ...entry.data() })));
     }, onError);
-};
-
-export const clearStaleRiderLocations = async (riders) => {
-    const staleBefore = Date.now() - 120000;
-    const staleRiders = riders.filter((rider) => {
-        const updatedAt = rider.lastLocation?.updatedAt;
-        if (!updatedAt) return false;
-        const timestamp = typeof updatedAt.toDate === "function" ? updatedAt.toDate().getTime() : new Date(updatedAt).getTime();
-        return Number.isFinite(timestamp) && timestamp < staleBefore;
-    });
-    await Promise.all(staleRiders.map((rider) => updateDoc(riderRef(rider.uid), { lastLocation: null })));
 };

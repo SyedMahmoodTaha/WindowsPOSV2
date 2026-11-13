@@ -917,6 +917,17 @@ const NewOrder = () => {
                                         <button type="button" onClick={openOrderNote} className={`flex size-8 items-center justify-center rounded-[10px] border transition-colors ${orderNote ? "border-[#d3d3d3] bg-[#d3d3d3] text-[#1a1a1a]" : "border-[#444444] text-[#ababab] hover:bg-[#3a3a3a] hover:text-[#f5f5f5]"}`} aria-label="Add order note" title="Add order note">
                                             <FaRegStickyNote className="size-4" />
                                         </button>
+                                        <button
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={paymentStatus === "paid"}
+                                            aria-label={`Payment status: ${paymentStatus === "paid" ? "Paid" : "Due"}`}
+                                            title={`Payment status: ${paymentStatus === "paid" ? "Paid" : "Due"}`}
+                                            onClick={() => setPaymentStatus((currentStatus) => currentStatus === "paid" ? "due" : "paid")}
+                                            className={`flex size-8 items-center justify-center rounded-[10px] text-[9px] font-bold text-white transition-colors ${paymentStatus === "paid" ? "bg-[#38a169] hover:bg-[#2f855a]" : "bg-[#e53e3e] hover:bg-[#c53030]"}`}
+                                        >
+                                            {paymentStatus === "paid" ? "Paid" : "Due"}
+                                        </button>
                                         <button type="button" onClick={clearOrder} disabled={cart.length === 0} className="flex size-8 items-center justify-center rounded-[10px] border border-[#444444] text-[#ababab] transition-colors hover:border-[#f08080] hover:bg-[#f08080] hover:text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-40" aria-label="Clear current order" title="Clear current order">
                                             <FaTrashCan className="size-4" />
                                         </button>
@@ -1032,18 +1043,6 @@ const NewOrder = () => {
                                 <div className="mb-2 mt-2 flex items-center justify-between text-base font-semibold">
                                     <span>Total</span>
                                     <span>{formatCurrency(total)}</span>
-                                </div>
-                                <div className="mb-2 flex items-center justify-between gap-3 rounded-[10px] bg-[#1f1f1f] px-3 py-2">
-                                    <span className="text-sm font-medium text-[#ababab]">Payment status</span>
-                                    <button
-                                        type="button"
-                                        role="switch"
-                                        aria-checked={paymentStatus === "paid"}
-                                        onClick={() => setPaymentStatus((currentStatus) => currentStatus === "paid" ? "due" : "paid")}
-                                        className={`min-w-20 rounded-full px-4 py-1.5 text-sm font-bold text-white transition-colors ${paymentStatus === "paid" ? "bg-[#38a169]" : "bg-[#e53e3e]"}`}
-                                    >
-                                        {paymentStatus === "paid" ? "Paid" : "Due"}
-                                    </button>
                                 </div>
                                 <div className="grid grid-cols-6 gap-1">
                                     <button type="button" onClick={() => completeOrder("saved")} disabled={!orderType || (cart.length === 0 && !isEditingExistingOrder)} className="col-span-2 rounded-[10px] bg-[#d3d3d3] px-1 py-1 text-xs font-semibold text-[#1a1a1a] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">Save</button>

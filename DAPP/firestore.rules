@@ -31,29 +31,21 @@ service cloud.firestore {
       allow update: if isManager()
         || (isActiveRider()
           && request.auth.uid == uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLocation'])
-          && resource.data.activeCount > 0
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeenAt'])
           && (
-            request.resource.data.lastLocation == null
-            || (
-              request.resource.data.lastLocation.latitude is number
-              && request.resource.data.lastLocation.latitude >= -90
-              && request.resource.data.lastLocation.latitude <= 90
-              && request.resource.data.lastLocation.longitude is number
-              && request.resource.data.lastLocation.longitude >= -180
-              && request.resource.data.lastLocation.longitude <= 180
-            )
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['lastSeenAt'])
+            || request.resource.data.lastSeenAt == null
+            || request.resource.data.lastSeenAt is timestamp
           ));
 
       allow update: if isActiveRider()
         && request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activeCount', 'lastActionOrderId', 'lastLocation'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activeCount', 'lastActionOrderId'])
         && request.resource.data.lastActionOrderId is string
         && (
           (
             request.resource.data.activeCount == resource.data.activeCount + 1
             && resource.data.activeCount < 5
-            && request.resource.data.lastLocation == resource.data.lastLocation
             && get(/databases/$(database)/documents/deliveryOrders/$(request.resource.data.lastActionOrderId)).data.status == 'available'
             && getAfter(/databases/$(database)/documents/deliveryOrders/$(request.resource.data.lastActionOrderId)).data.status == 'with_rider'
             && getAfter(/databases/$(database)/documents/deliveryOrders/$(request.resource.data.lastActionOrderId)).data.riderUid == uid
@@ -62,10 +54,6 @@ service cloud.firestore {
           (
             request.resource.data.activeCount == resource.data.activeCount - 1
             && resource.data.activeCount > 0
-            && (
-              (request.resource.data.activeCount == 0 && request.resource.data.lastLocation == null)
-              || (request.resource.data.activeCount > 0 && request.resource.data.lastLocation == resource.data.lastLocation)
-            )
             && get(/databases/$(database)/documents/deliveryOrders/$(request.resource.data.lastActionOrderId)).data.status == 'on_way'
             && getAfter(/databases/$(database)/documents/deliveryOrders/$(request.resource.data.lastActionOrderId)).data.status == 'delivered'
             && getAfter(/databases/$(database)/documents/deliveryOrders/$(request.resource.data.lastActionOrderId)).data.riderUid == uid
