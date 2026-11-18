@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { FaArrowRight, FaPrint, FaPlus, FaTruckFast, FaUtensils } from "react-icons/fa6";
-import { MdOutlineTableBar } from "react-icons/md";
-import { GoListOrdered } from "react-icons/go";
+import { FaArrowRight, FaUtensils } from "react-icons/fa6";
 import { Link } from "react-router-dom";
 import { getCurrentUser } from "../utils/auth";
+import { quickActionOptions, readQuickActionIds } from "../utils/quickActions";
 
 const getGreeting = (hour) => {
     if (hour >= 19) return "Night Owl";
@@ -24,22 +23,19 @@ const formatDate = (date) => [
     date.getFullYear(),
 ].join("-");
 
-const Home = () => {
+const Home = ({ onDeliveryOpen }) => {
     const [currentTime, setCurrentTime] = useState(new Date());
     const currentUser = getCurrentUser();
+    const [quickActionIds] = useState(readQuickActionIds);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
     }, []);
 
-    const actions = [
-        { label: "New Order", icon: FaPlus, path: "/new-order" },
-        { label: "Tables", icon: MdOutlineTableBar, path:"/Tables" },
-        { label: "Orders", icon: GoListOrdered, path: "/Orders" },
-        { label: "Delivery", icon: FaTruckFast, path: "/delivery" },
-        { label: "Printer Settings", icon: FaPrint, path: "/settings" },
-    ];
+    const actions = quickActionOptions.filter(({ id, roles }) => (
+        quickActionIds.includes(id) && (!roles || roles.includes(currentUser?.role))
+    ));
 
     return(
     <section className="min-h-[calc(100vh-4rem)] overflow-hidden bg-[#1f1f1f] px-6 py-8 text-[#f5f5f5]">
@@ -66,9 +62,8 @@ const Home = () => {
                     <h2 className="text-xl font-semibold">Quick Actions</h2>
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-                    {actions
-                        .filter(({ path }) => path !== "/delivery" || ["Admin", "Manager"].includes(currentUser?.role))
-                        .map(({ label, icon: Icon, path }) => {
+                    {actions.length === 0 && <p className="text-sm text-[#ababab]">No quick actions selected. Add some in Quick Action Settings.</p>}
+                    {actions.map(({ label, icon: Icon, path }) => {
                         const actionClassName = "quick-action-card flex items-center gap-4 rounded-[20px] bg-[#2a2a2a] p-5 text-left transition-all duration-200 hover:-translate-y-1 hover:bg-[#d3d3d3] hover:text-[#1a1a1a] active:translate-y-0 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#d3d3d3]";
                         const actionContent = <>
                             <span className="quick-action-icon flex size-11 items-center justify-center rounded-full bg-[#3a3a3a] text-[#f5f5f5]">
@@ -78,7 +73,7 @@ const Home = () => {
                         </>;
 
                         return path ? (
-                            <Link key={label} to={path} state={path === "/Tables" ? { from: "/" } : undefined} className={actionClassName}>{actionContent}</Link>
+                            <Link key={label} to={path} state={path === "/Tables" ? { from: "/" } : undefined} onClick={path === "/delivery" ? onDeliveryOpen : undefined} className={actionClassName}>{actionContent}</Link>
                         ) : (
                             <button key={label} type="button" className={actionClassName}>{actionContent}</button>
                         );

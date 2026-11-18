@@ -18,6 +18,50 @@ const formatCurrency = (amount) => new Intl.NumberFormat("en-IN", {
 
 const toPaise = (value) => Math.round((Number(value) || 0) * 100);
 
+const getEditDistance = (left, right) => {
+    let previousRow = Array.from({ length: right.length + 1 }, (_, index) => index);
+    let twoRowsBack = null;
+
+    for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+        const currentRow = [leftIndex];
+        for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+            const substitutionCost = left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1;
+            let distance = Math.min(
+                previousRow[rightIndex] + 1,
+                currentRow[rightIndex - 1] + 1,
+                previousRow[rightIndex - 1] + substitutionCost,
+            );
+            if (
+                leftIndex > 1
+                && rightIndex > 1
+                && left[leftIndex - 1] === right[rightIndex - 2]
+                && left[leftIndex - 2] === right[rightIndex - 1]
+            ) {
+                distance = Math.min(distance, twoRowsBack[rightIndex - 2] + 1);
+            }
+            currentRow[rightIndex] = distance;
+        }
+        twoRowsBack = previousRow;
+        previousRow = currentRow;
+    }
+
+    return previousRow[right.length];
+};
+
+const isMenuItemMatch = (itemName, searchTerm) => {
+    const normalizedName = itemName.toLowerCase();
+    if (normalizedName.includes(searchTerm)) return true;
+
+    const searchWords = searchTerm.split(/\s+/).filter(Boolean);
+    const nameWords = normalizedName.split(/[^a-z0-9]+/).filter(Boolean);
+    return searchWords.every((searchWord) => nameWords.some((nameWord) => {
+        if (nameWord.includes(searchWord) || searchWord.includes(nameWord)) return true;
+        const allowedDistance = searchWord.length > 7 ? 2 : 1;
+        return Math.abs(nameWord.length - searchWord.length) <= allowedDistance
+            && getEditDistance(searchWord, nameWord) <= allowedDistance;
+    }));
+};
+
 const orderTypeFields = {
     Table: [
         { name: "tableNumber", label: "Table number", placeholder: "e.g. R1, L2, F1" },
@@ -74,6 +118,7 @@ const NewOrder = () => {
     const [selectedCategory, setSelectedCategory] = useState("Favourites");
     const [orderType, setOrderType] = useState("");
     const [orderTypeError, setOrderTypeError] = useState("");
+    const [deliveryPrintDestination, setDeliveryPrintDestination] = useState("cashier");
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [summaryOpen, setSummaryOpen] = useState(false);
     const [orderDetails, setOrderDetails] = useState({});
@@ -311,9 +356,10 @@ const NewOrder = () => {
                 : menuItems.filter((item) => item.category === selectedCategory);
     const currentOrderFields = orderType ? orderTypeFields[orderType] : [];
     const searchTerm = menuSearch.toLowerCase().trim();
-    const filteredItems = (searchTerm ? menuItems : visibleItems).filter((item) => item.name.toLowerCase().includes(searchTerm));
+    const filteredItems = searchTerm
+        ? visibleItems.filter((item) => isMenuItemMatch(item.name, searchTerm))
+        : visibleItems;
     const canPrint = Boolean(orderType);
-
     const handleDetailChange = (event) => {
         const { name, value } = event.target;
         setOrderDetails((currentDetails) => ({ ...currentDetails, [name]: value }));
@@ -538,7 +584,7 @@ const NewOrder = () => {
         });
     };
 
-    const completeOrder = (status, destination = null) => {
+    const completeOrder = (status, destination = null, templateDestination = destination) => {
         if (cart.length === 0 && !existingOrderRef.current) return;
         if (!orderType) {
             setOrderTypeError("Choose Table, Parcel / Takeaway, or Delivery before saving or sending a KOT.");
@@ -588,7 +634,15 @@ const NewOrder = () => {
             updateOrder(order.id, order);
             const itemsToPrint = changedItems();
             const itemsRemoved = removedItems();
-            if (destination === "kitchen" && itemsRemoved.length > 0) {
+            const printOptions = templateDestination && templateDestination !== destination
+                ? { templateDestination }
+                : undefined;
+            const fullDeliveryBillToKitchen = orderType === "Delivery"
+                && destination === "kitchen"
+                && templateDestination === "cashier";
+            if (fullDeliveryBillToKitchen) {
+                void printOrder(order, destination, printOptions);
+            } else if (destination === "kitchen" && itemsRemoved.length > 0) {
                 const removalSlip = {
                     ...order,
                     cart: itemsRemoved,
@@ -598,16 +652,21 @@ const NewOrder = () => {
                     await printOrder(removalSlip, "kitchen");
                     if (itemsToPrint.length > 0) {
                         const changedSubtotal = itemsToPrint.reduce((sum, item) => sum + item.price * item.quantity, 0);
-                        await printOrder({ ...order, cart: itemsToPrint, subtotal: changedSubtotal, total: changedSubtotal }, destination);
+                        await printOrder({ ...order, cart: itemsToPrint, subtotal: changedSubtotal, total: changedSubtotal }, destination, printOptions);
                     }
                 })();
             } else if (destination && itemsToPrint.length > 0) {
                 const changedSubtotal = itemsToPrint.reduce((sum, item) => sum + item.price * item.quantity, 0);
-                printOrder({ ...order, cart: itemsToPrint, subtotal: changedSubtotal, total: changedSubtotal }, destination);
+                printOrder({ ...order, cart: itemsToPrint, subtotal: changedSubtotal, total: changedSubtotal }, destination, printOptions);
             }
         } else {
             appendOrder(order);
-            if (destination) printOrder(order, destination);
+            if (destination) {
+                const printOptions = templateDestination && templateDestination !== destination
+                    ? { templateDestination }
+                    : undefined;
+                void printOrder(order, destination, printOptions);
+            }
         }
 
         if (activeHeldOrderId) {
@@ -839,7 +898,6 @@ const NewOrder = () => {
                                 {orderTypeError || "Select an order type to enable Save and KOT."}
                             </p>
                         )}
-
                         {orderType && orderType !== "Table" && (
                             <section
                                 className={`order-details-panel flex-none overflow-hidden rounded-[24px] bg-[#2a2a2a] p-4 shadow-lg transition-[max-height,opacity,transform,background-color] duration-300 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] hover:bg-[#303030] ${detailsOpen ? "max-h-96 translate-y-0 opacity-100" : "max-h-16 translate-y-0 opacity-100"}`}
@@ -1044,9 +1102,27 @@ const NewOrder = () => {
                                     <span>Total</span>
                                     <span>{formatCurrency(total)}</span>
                                 </div>
+                                {orderType === "Delivery" && (
+                                    <div className="mb-2 flex items-center justify-between gap-3 rounded-[10px] bg-[#1f1f1f] px-3 py-2">
+                                        <span className="text-sm font-medium text-[#ababab]">Save &amp; Print to</span>
+                                        <div role="group" aria-label="Delivery print destination" className="grid grid-cols-2 rounded-[8px] bg-[#2a2a2a] p-1">
+                                            {["kitchen", "cashier"].map((destination) => (
+                                                <button
+                                                    key={destination}
+                                                    type="button"
+                                                    aria-pressed={deliveryPrintDestination === destination}
+                                                    onClick={() => setDeliveryPrintDestination(destination)}
+                                                    className={`rounded-[6px] px-3 py-1 text-xs font-semibold capitalize transition-colors ${deliveryPrintDestination === destination ? "bg-[#d3d3d3] text-[#1a1a1a]" : "text-[#ababab] hover:text-[#f5f5f5]"}`}
+                                                >
+                                                    {destination}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="grid grid-cols-6 gap-1">
                                     <button type="button" onClick={() => completeOrder("saved")} disabled={!orderType || (cart.length === 0 && !isEditingExistingOrder)} className="col-span-2 rounded-[10px] bg-[#d3d3d3] px-1 py-1 text-xs font-semibold text-[#1a1a1a] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">Save</button>
-                                    <button type="button" onClick={() => completeOrder("saved", "cashier")} disabled={!canPrint || (cart.length === 0 && !isEditingExistingOrder)} className="col-span-2 rounded-[10px] bg-[#d3d3d3] px-1 py-1 text-xs font-semibold text-[#1a1a1a] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">Save &amp; Print</button>
+                                    <button type="button" onClick={() => completeOrder("saved", orderType === "Delivery" ? deliveryPrintDestination : "cashier", "cashier")} disabled={!canPrint || (cart.length === 0 && !isEditingExistingOrder)} className="col-span-2 rounded-[10px] bg-[#d3d3d3] px-1 py-1 text-xs font-semibold text-[#1a1a1a] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">Save &amp; Print</button>
                                     <button type="button" onClick={() => completeOrder("kot")} disabled={!orderType || (cart.length === 0 && !isEditingExistingOrder)} className="col-span-2 rounded-[10px] bg-[#3a3a3a] px-1 py-1 text-xs font-semibold text-[#f5f5f5] transition-colors hover:bg-[#d3d3d3] hover:text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-40">KOT</button>
                                     <button type="button" onClick={() => completeOrder("kot", "kitchen")} disabled={!canPrint || (cart.length === 0 && !isEditingExistingOrder)} className="col-span-3 rounded-[10px] bg-[#3a3a3a] px-1 py-1 text-xs font-semibold text-[#f5f5f5] transition-colors hover:bg-[#d3d3d3] hover:text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-40">KOT &amp; Print</button>
                                     <button type="button" onClick={holdCurrentOrder} disabled={cart.length === 0} className="col-span-3 flex items-center justify-center gap-1 rounded-[10px] border border-[#555555] px-1 py-1 text-xs font-semibold text-[#d3d3d3] transition-colors hover:bg-[#3a3a3a] disabled:cursor-not-allowed disabled:opacity-40">Hold</button>

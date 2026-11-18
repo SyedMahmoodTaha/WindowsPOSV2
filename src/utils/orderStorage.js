@@ -9,6 +9,7 @@ const LEGACY_ORDERS_STORAGE_KEY = "pfl-orders";
 const BILL_SEQUENCE_STORAGE_KEY = "pfl-bill-sequence-v2";
 const TOKEN_SEQUENCE_STORAGE_KEY = "pfl-token-sequence-v1";
 const BUSINESS_DAY_START_HOUR = 3;
+const KOT_PRINTABLE_WIDTH_MM = 72;
 
 const WEB_PRINTER_SETTINGS_KEY = "pfl-printer-settings-v1";
 const WEB_SYNC_SETTINGS_KEY = "pfl-sync-settings-v1";
@@ -256,8 +257,8 @@ const escapeHtml = (value) => String(value ?? "")
 
 export const renderReceiptHtml = (order, destination, configuredOptions = {}) => {
     const template = configuredOptions?.fields ? configuredOptions : defaultBillTemplates[0];
+    const paperWidth = template.paperWidth === 58 ? 58 : template.layout === "kot" ? KOT_PRINTABLE_WIDTH_MM : 80;
     if (destination === "kitchen" && order.kotAction === "cancel-items") {
-        const paperWidth = template.paperWidth === 58 ? 58 : 80;
         const removedItemsMarkup = (order.cart || []).map((item) => (
             `<li><strong>${Number(item.quantity || 1)} ×</strong> ${escapeHtml(item.name || "")}</li>`
         )).join("");
@@ -277,7 +278,6 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         </style></head><body><h1>ITEM REMOVED</h1><p>Bill No.: ${escapeHtml(order.orderNumber || "-")}</p><p>${escapeHtml(orderLocation)}</p><div class="divider"></div><ul>${removedItemsMarkup}</ul></body></html>`;
     }
     if (order.transferInfo) {
-        const paperWidth = template.paperWidth === 58 ? 58 : 80;
         const { fromTable, toTable } = order.transferInfo;
         return `<!doctype html><html><head><meta charset="utf-8"><style>
             @page { size: ${paperWidth}mm auto; margin: 0; }
@@ -296,7 +296,6 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         : "";
     const title = isKotLayout ? "" : (template.titleText || (isKitchenPrint ? "Kitchen KOT" : ""));
     if (isKotLayout) {
-        options.logo = false;
         options.businessName = false;
     }
     const currentUser = getCurrentUser();
@@ -322,7 +321,6 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         template.footerPhone ? `Phone: ${template.footerPhone}` : "",
         template.gstNumber ? `GST: ${template.gstNumber}` : "",
     ].map((line) => String(line || "").trim()).filter(Boolean);
-    const paperWidth = template.paperWidth === 58 ? 58 : 80;
     const horizontalPaddingMm = Math.min(8, Math.max(0, Number(template.horizontalPaddingMm ?? 3)));
     if (template.layout === "lassi-shop" && destination !== "kitchen") {
         const cashierFontFamilies = {
@@ -508,7 +506,7 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         body {
           font: 700 ${fontSize}px/${lineHeight} ${fontFamily};
           color: #000000;
-          padding: ${contentPadding}px 5mm ${isKotLayout ? `calc(${contentPadding}px + ${kotBottomFeedLines * fontSize * lineHeight}px)` : `${contentPadding}px`} ${isKotLayout ? `${horizontalPaddingMm}mm` : "3mm"};
+          padding: ${contentPadding}px ${isKotLayout ? `${horizontalPaddingMm}mm` : "3mm"} ${isKotLayout ? `calc(${contentPadding}px + ${kotBottomFeedLines * fontSize * lineHeight}px)` : `${contentPadding}px`} ${isKotLayout ? `${horizontalPaddingMm}mm` : "3mm"};
           box-sizing: border-box;
           word-break: break-word;
           overflow-wrap: anywhere;
@@ -566,11 +564,11 @@ export const renderReceiptHtml = (order, destination, configuredOptions = {}) =>
         .custom-logo { display: block; max-width: 100%; max-height: 30mm; margin: 0 auto; object-fit: contain; }
         .custom-placeholder { color: #777; font-size: 10px; font-weight: 400; }
         @media print { body { margin: 0; } }
-    </style></head><body class="${isKotLayout ? "kot-layout" : ""}">${template.layout === "custom" ? customElements : `${!isKotLayout && (options.logo || options.businessName) ? `<div class="header">${options.logo ? `<div class="logo-box"><img src="${escapeHtml(logoSrc)}" alt="Logo" /></div>` : ""}${options.businessName ? `<div class="brand">${escapeHtml(template.headerPhoneNumber || template.businessName || "Lassi Shop")}</div>` : ""}</div>` : ""}${!isKotLayout && template.headerText ? `<p class="footer">${escapeHtml(template.headerText)}</p>` : ""}${title ? `<div class="header-line"><h1>${title}</h1></div>` : ""}<div class="meta-box">${bodyMarkup}</div>`}${paymentStatusMarkup}</body></html>`;
+    </style></head><body class="${isKotLayout ? "kot-layout" : ""}">${template.layout === "custom" ? customElements : `${options.logo || (!isKotLayout && options.businessName) ? `<div class="header">${options.logo ? `<div class="logo-box"><img src="${escapeHtml(logoSrc)}" alt="Logo" /></div>` : ""}${!isKotLayout && options.businessName ? `<div class="brand">${escapeHtml(template.headerPhoneNumber || template.businessName || "Lassi Shop")}</div>` : ""}</div>` : ""}${!isKotLayout && template.headerText ? `<p class="footer">${escapeHtml(template.headerText)}</p>` : ""}${title ? `<div class="header-line"><h1>${title}</h1></div>` : ""}<div class="meta-box">${bodyMarkup}</div>`}${paymentStatusMarkup}</body></html>`;
 };
 
-const printSingleOrder = async (order, destination, selectedTemplate) => {
-    const html = renderReceiptHtml(order, destination, selectedTemplate || defaultBillTemplates[0]);
+const printSingleOrder = async (order, destination, selectedTemplate, templateDestination = destination) => {
+    const html = renderReceiptHtml(order, templateDestination, selectedTemplate || defaultBillTemplates[0]);
     if (window.pflDesktop) {
         await window.pflDesktop.printOrder({
             html,
@@ -591,7 +589,7 @@ const printSingleOrder = async (order, destination, selectedTemplate) => {
     return true;
 };
 
-export const printOrder = async (order, destination, { includeKitchenCopy = true } = {}) => {
+export const printOrder = async (order, destination, { includeKitchenCopy = true, templateDestination } = {}) => {
     let settings = null;
     let templates = defaultBillTemplates;
     if (window.pflDesktop && window.pflDesktop.getPrinterSettings) {
@@ -611,10 +609,11 @@ export const printOrder = async (order, destination, { includeKitchenCopy = true
         : [destination];
     try {
         for (const printDestination of destinations) {
-            const selectedId = settings?.selectedBillTemplateIds?.[printDestination]
+            const layoutDestination = templateDestination || printDestination;
+            const selectedId = settings?.selectedBillTemplateIds?.[layoutDestination]
                 || settings?.selectedBillTemplateId;
             const selectedTemplate = templates.find((template) => template.id === selectedId) || templates[0];
-            await printSingleOrder(order, printDestination, selectedTemplate);
+            await printSingleOrder(order, printDestination, selectedTemplate, layoutDestination);
         }
         return true;
     } catch (error) {

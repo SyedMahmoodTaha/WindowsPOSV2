@@ -1,30 +1,14 @@
-import { FaArrowLeft, FaBoxOpen, FaChartLine, FaGear, FaUsers, FaWifi } from "react-icons/fa6";
-import { GoListOrdered } from "react-icons/go";
+import { FaArrowLeft, FaBolt } from "react-icons/fa6";
 import { Link } from "react-router-dom";
 import { getCurrentUser } from "../utils/auth";
+import { quickActionOptions, readQuickActionIds } from "../utils/quickActions";
 
 const MoreSettings = () => {
     const role = getCurrentUser()?.role;
-    const options = [
-        { label: "Inventory", description: "Stock management", icon: FaBoxOpen, path: "/inventory" },
-        { label: "My Account", description: "Update your profile and contact details", icon: FaGear, path: "/my-account" },
-        { label: "Bill Printing Preferences", description: "Configure cashier and kitchen print layouts", icon: FaGear, path: "/bill-printing-preferences" },
-        ...(["Admin", "Manager", "Assistant Manager"].includes(role) ? [
-            { label: "Customers", description: "Customer profiles and service history", icon: FaUsers, path: "/customers" },
-            { label: "All Orders", description: "Review completed orders", icon: GoListOrdered, path: "/all-orders" },
-        ] : []),
-        ...(["Admin", "Manager"].includes(role) ? [
-            { label: "Staff & Users", description: "View staff profiles and manage login accounts", icon: FaUsers, path: "/staff-users" },
-        ] : []),
-        ...(role === "Admin" ? [
-            { label: "Admin Settings", description: "Sales and operations reports", icon: FaChartLine, path: "/admin-settings" },
-            { label: "Network Sync", description: "Connect approved devices on the local network", icon: FaWifi, path: "/network-sync" },
-            { label: "Developer Mode", description: "Manage menu, categories, tables, and POS setup", icon: FaGear, path: "/developer" },
-        ] : []),
-        ...(role === "Manager" ? [
-            { label: "Menu Management", description: "Manage menu items and categories", icon: FaGear, path: "/developer" },
-        ] : []),
-    ];
+    const selectedIds = readQuickActionIds();
+    const options = quickActionOptions.filter(({ id, roles }) => (
+        !selectedIds.includes(id) && (!roles || roles.includes(role))
+    ));
 
     return (
         <main className="min-h-screen bg-[#1f1f1f] px-4 py-6 text-[#f5f5f5] sm:px-6">
@@ -38,6 +22,18 @@ const MoreSettings = () => {
                         <h1 className="text-3xl font-semibold">More Settings</h1>
                     </div>
                 </div>
+                <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <Link to="/quick-action-settings" state={{ from: "/more-settings" }} className="flex items-start gap-4 rounded-[20px] bg-[#2a2a2a] p-5 transition-colors hover:bg-[#353535] focus:outline-none focus:ring-2 focus:ring-[#d3d3d3]">
+                        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#3a3a3a] text-[#d3d3d3]">
+                            <FaBolt className="size-5" />
+                        </span>
+                        <span>
+                            <span className="block font-semibold">Quick Action Settings</span>
+                            <span className="mt-1 block text-sm text-[#ababab]">Choose shortcuts for the home screen</span>
+                        </span>
+                    </Link>
+                </div>
+                <h2 className="mb-3 text-xl font-semibold">More Settings</h2>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {options.map(({ label, description, icon: Icon, path }) => (
                         <Link key={label} to={path} state={{ from: "/more-settings" }} className="flex items-start gap-4 rounded-[20px] bg-[#2a2a2a] p-5 transition-colors hover:bg-[#353535] focus:outline-none focus:ring-2 focus:ring-[#d3d3d3]">

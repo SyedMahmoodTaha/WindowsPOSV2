@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react"
+import { lazy, Suspense, useEffect, useState } from "react"
 import { HashRouter as Router, Navigate, Route, Routes, useLocation } from "react-router-dom"
 import Header from "./components/shared/header"
 import { getCurrentUser } from "./utils/auth"
@@ -21,6 +21,7 @@ const MyAccount = lazy(() => import("./pages/MyAccount.jsx"))
 const Customers = lazy(() => import("./pages/Customers.jsx"))
 const Inventory = lazy(() => import("./pages/Inventory.jsx"))
 const MoreSettings = lazy(() => import("./pages/MoreSettings.jsx"))
+const QuickActionSettings = lazy(() => import("./pages/QuickActionSettings.jsx"))
 const Tables = lazy(() => import("./pages/Tables.jsx"))
 const Delivery = lazy(() => import("./pages/Delivery.jsx"))
 
@@ -96,6 +97,9 @@ function AppRoutes() {
   const location = useLocation()
   const isAuthenticated = Boolean(getCurrentUser())
   const currentUser = getCurrentUser()
+  const [deliveryVisited, setDeliveryVisited] = useState(location.pathname === "/delivery")
+  const canAccessDelivery = ["Admin", "Manager"].includes(currentUser?.role)
+  const isDeliveryRoute = location.pathname === "/delivery"
 
   if (!isAuthenticated && location.pathname !== "/Auth") {
     return <Navigate to="/Auth" state={{ from: location.pathname }} replace />
@@ -105,18 +109,24 @@ function AppRoutes() {
     <>
       {isAuthenticated && location.pathname === "/" && <Header />}
       <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-[#1f1f1f] text-[#ababab]">Loading...</div>}>
+        {isAuthenticated && canAccessDelivery && (deliveryVisited || isDeliveryRoute) && (
+          <div className={isDeliveryRoute ? "" : "hidden"}>
+            <Delivery />
+          </div>
+        )}
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Home onDeliveryOpen={() => setDeliveryVisited(true)} />} />
           <Route path="/new-order" element={<NewOrder />} />
           <Route path="/Auth" element={<Auth />} />
           <Route path="/Tables" element={<Tables />} />
           <Route path="/Orders" element={<Orders />} />
-          <Route path="/delivery" element={["Admin", "Manager"].includes(currentUser?.role) ? <Delivery /> : <Navigate to="/" replace />} />
+          <Route path="/delivery" element={canAccessDelivery ? null : <Navigate to="/" replace />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/network-sync" element={currentUser?.role === "Admin" ? <NetworkSync /> : <Navigate to="/" replace />} />
           <Route path="/customers" element={["Admin", "Manager", "Assistant Manager"].includes(currentUser?.role) ? <Customers /> : <Navigate to="/" replace />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/more-settings" element={<MoreSettings />} />
+          <Route path="/quick-action-settings" element={<QuickActionSettings />} />
           <Route path="/all-orders" element={["Admin", "Manager", "Assistant Manager"].includes(currentUser?.role) ? <AllOrders /> : <Navigate to="/" replace />} />
           <Route path="/bill-printing-preferences" element={<BillPrintingPreferences />} />
           <Route path="/admin-settings" element={currentUser?.role === "Admin" ? <AdminSettings /> : <Navigate to="/" replace />} />

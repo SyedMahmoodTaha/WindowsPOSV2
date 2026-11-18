@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { FaArrowLeft, FaRightFromBracket, FaTruckFast } from "react-icons/fa6";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
     createDeliveryRider,
     isDeliveryCloudConfigured,
@@ -12,6 +12,7 @@ import {
     subscribeDeliveryRiders,
     syncDeliveryOrders,
 } from "../utils/deliveryCloud";
+import { isDeliveryEnabled, setDeliveryEnabled, subscribeDeliveryEnabled } from "../utils/deliverySettings";
 import { readOrders } from "../utils/orderStorage";
 
 const formatCurrency = (amount) => new Intl.NumberFormat("en-IN", {
@@ -28,7 +29,10 @@ const orderStatuses = {
 };
 
 const Delivery = () => {
+    const location = useLocation();
     const [manager, setManager] = useState(null);
+    const [managerAuthChecked, setManagerAuthChecked] = useState(!isDeliveryCloudConfigured);
+    const deliveryEnabled = useSyncExternalStore(subscribeDeliveryEnabled, isDeliveryEnabled, isDeliveryEnabled);
     const [riders, setRiders] = useState([]);
     const [orders, setOrders] = useState([]);
     const [previewOrder, setPreviewOrder] = useState(null);
@@ -51,6 +55,7 @@ const Delivery = () => {
     useEffect(() => {
         const unsubscribe = listenDeliveryManager((profile, error) => {
             setManager(profile);
+            setManagerAuthChecked(true);
             if (error) setMessage(`Could not check the Firebase account: ${error.message}`);
         });
         return unsubscribe;
@@ -100,6 +105,7 @@ const Delivery = () => {
         try {
             const profile = await signInDeliveryManager(email, password);
             setManager(profile);
+            setManagerAuthChecked(true);
             setPassword("");
         } catch (error) {
             setMessage(error.message);
@@ -161,8 +167,8 @@ const Delivery = () => {
 
     const ongoingOrders = orders.filter((order) => order.status !== "delivered");
     const deliveredOrders = orders.filter((order) => order.status === "delivered");
-    const selectedOrder = previewOrder
-        ? orders.find((order) => order.id === previewOrder.id) || previewOrder
+    const selectedOrder = previewOrder?.locationKey === location.key
+        ? orders.find((order) => order.id === previewOrder.order.id) || previewOrder.order
         : null;
     const renderOrderCards = (sectionOrders) => sectionOrders.map((order) => {
         const status = orderStatuses[order.status] || {
@@ -174,7 +180,7 @@ const Delivery = () => {
             <button
                 type="button"
                 key={order.id}
-                onClick={() => setPreviewOrder(order)}
+                onClick={() => setPreviewOrder({ order, locationKey: location.key })}
                 aria-label={`Preview delivery order ${order.orderNumber || order.posOrderId}`}
                 className="group w-full rounded-[16px] border border-[#393939] bg-[#2a2a2a] p-4 text-left transition hover:-translate-y-0.5 hover:border-[#666] hover:bg-[#303030] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d3d3d3]"
             >
@@ -223,7 +229,41 @@ const Delivery = () => {
                 {message && <p role="alert" className="mb-5 rounded-[12px] border border-[#754b32] bg-[#35251c] px-4 py-3 text-sm text-[#ffd1a8]">{message}</p>}
                 {success && <p role="status" className="mb-5 rounded-[12px] border border-[#41624f] bg-[#203328] px-4 py-3 text-sm text-[#b7f0cc]">{success}</p>}
 
-                {!manager ? (
+                <section className="mb-5 rounded-[16px] border border-[#393939] bg-[#2a2a2a] p-5">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h2 className="font-semibold">Delivery app sync</h2>
+                            <p className="mt-1 text-sm text-[#ababab]">
+                                {deliveryEnabled
+                                    ? "New POS Delivery orders are sent to the rider app."
+                                    : "POS users can still take and save Delivery orders, but they will not be sent to the rider app. Existing app records are unchanged."}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            aria-pressed={deliveryEnabled}
+                            onClick={() => {
+                                const nextEnabled = !deliveryEnabled;
+                                setDeliveryEnabled(nextEnabled);
+                                setSuccess(nextEnabled
+                                    ? "Delivery app sync is enabled. Pending POS Delivery orders will be sent to the rider app."
+                                    : "Delivery app sync is disabled. POS Delivery orders will not be sent to the rider app.");
+                                setMessage("");
+                            }}
+                            className={`rounded-[10px] px-4 py-2.5 text-sm font-semibold transition-colors ${deliveryEnabled
+                                ? "border border-[#754b32] text-[#ffd1a8] hover:bg-[#35251c]"
+                                : "bg-[#d3d3d3] text-[#1a1a1a] hover:bg-white"}`}
+                        >
+                            {deliveryEnabled ? "Disable delivery sync" : "Enable delivery sync"}
+                        </button>
+                    </div>
+                </section>
+
+                {!manager && !managerAuthChecked ? (
+                    <section role="status" className="mx-auto max-w-md rounded-[20px] bg-[#2a2a2a] p-6 text-sm text-[#ababab]">
+                        Checking saved delivery connection...
+                    </section>
+                ) : !manager ? (
                     <section className="mx-auto max-w-md rounded-[20px] bg-[#2a2a2a] p-6">
                         <h2 className="text-xl font-semibold">Connect delivery service</h2>
                         <p className="mt-2 text-sm text-[#ababab]">Sign in with the Firebase delivery-manager account configured for this POS.</p>

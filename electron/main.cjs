@@ -498,13 +498,17 @@ const writePrinterSettings = (settings) => {
     return normalized;
 };
 
+const KOT_CHARACTERS_PER_LINE = 48;
+
 const createEscPosReceipt = (order, destination, template) => {
-    const paperColumns = template?.paperWidth === 58 ? 32 : 42;
     const isKotTemplate = template?.layout === "kot";
+    const paperColumns = isKotTemplate && template?.paperWidth !== 58
+        ? KOT_CHARACTERS_PER_LINE
+        : template?.paperWidth === 58 ? 32 : 42;
     const thermalRightMargin = Math.min(5, Math.max(0, Number(template?.thermalRightMargin ?? 2)));
     const horizontalPaddingMm = Math.min(8, Math.max(0, Number(template?.horizontalPaddingMm ?? 3)));
     const horizontalPaddingColumns = isKotTemplate
-        ? Math.min(4, Math.max(0, Math.round(horizontalPaddingMm * paperColumns / (template?.paperWidth === 58 ? 58 : 80))))
+        ? Math.min(4, Math.max(0, Math.round(horizontalPaddingMm * paperColumns / (template?.paperWidth === 58 ? 58 : 72))))
         : 0;
     const width = isKotTemplate
         ? paperColumns - horizontalPaddingColumns * 2
@@ -699,6 +703,7 @@ const createEscPosReceipt = (order, destination, template) => {
         const kotType = order.orderType === "Table" ? "Dine In" : order.orderType === "Parcel" || order.orderType === "Takeaway" ? "Parcel/Take Away" : order.orderType || "Walk-in";
         const itemWidth = Math.max(8, Math.floor(width * (Number(template?.itemNameWidth) || 54) / 100));
         output.push("\x1b\x61\x01");
+        if (fields.logo && template?.logoDataUrl) output.push(createEscPosLogo(template));
         for (const field of template.fieldOrder || ["dateTime", "billNumber", "billType", "customerName", "tableNumber", "businessName", "items", "note"]) {
             if (field.startsWith("divider:")) {
                 if (kotDivider) add(kotDivider);

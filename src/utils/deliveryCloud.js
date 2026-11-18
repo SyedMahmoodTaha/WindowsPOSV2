@@ -19,6 +19,7 @@ import {
     serverTimestamp,
     setDoc,
 } from "firebase/firestore";
+import { isDeliveryEnabled } from "./deliverySettings";
 
 const config = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -216,6 +217,7 @@ const summarizeItemChanges = (before, after) => {
 };
 
 export const syncDeliveryOrders = async (orders) => {
+    if (!isDeliveryEnabled()) return;
     const { auth, db: firestore } = requireCloud();
     if (auth.currentUser?.uid !== undefined) {
         const manager = await getDoc(doc(firestore, "deliveryRiders", auth.currentUser.uid));
@@ -225,11 +227,13 @@ export const syncDeliveryOrders = async (orders) => {
     }
 
     for (const order of orders) {
+        if (!isDeliveryEnabled()) return;
         if (order.orderType !== "Delivery") continue;
         const reference = doc(firestore, "deliveryOrders", String(order.id));
         const payload = getDeliveryPayload(order);
         await runTransaction(firestore, async (transaction) => {
             const existing = await transaction.get(reference);
+            if (!isDeliveryEnabled()) return;
             if (existing.exists()) {
                 const current = existing.data();
                 const changed = Object.entries(payload).some(([key, value]) => JSON.stringify(current[key]) !== JSON.stringify(value));
@@ -274,7 +278,7 @@ export const startDeliveryOrderSync = () => {
     if (!isDeliveryCloudConfigured || !deliveryAuth) return () => {};
     let signedInManager = false;
     const publish = (event) => {
-        if (!signedInManager) return;
+        if (!signedInManager || !isDeliveryEnabled()) return;
         try {
             const orders = JSON.parse(localStorage.getItem("pfl-orders-v2") || "[]");
             const orderId = event?.detail?.orderId;
@@ -292,6 +296,9 @@ export const startDeliveryOrderSync = () => {
             console.error("Could not read local orders for delivery sync:", error);
         }
     };
+    const handleDeliverySettingChange = () => {
+        if (isDeliveryEnabled()) publish();
+    };
     const unsubscribeAuth = onAuthStateChanged(deliveryAuth, async (user) => {
         signedInManager = false;
         if (!user) return;
@@ -305,10 +312,12 @@ export const startDeliveryOrderSync = () => {
     });
     window.addEventListener("pfl-orders-updated", publish);
     window.addEventListener("online", publish);
+    window.addEventListener("pfl-delivery-settings-updated", handleDeliverySettingChange);
     return () => {
         unsubscribeAuth();
         window.removeEventListener("pfl-orders-updated", publish);
         window.removeEventListener("online", publish);
+        window.removeEventListener("pfl-delivery-settings-updated", handleDeliverySettingChange);
     };
 };
 
